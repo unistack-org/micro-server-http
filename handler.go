@@ -1,0 +1,27 @@
+package http
+
+import (
+	"github.com/micro/go-micro/registry"
+	"github.com/micro/go-micro/server"
+)
+
+type httpHandler struct {
+	opts server.HandlerOptions
+	hd   interface{}
+}
+
+func (h *httpHandler) Name() string {
+	return "handler"
+}
+
+func (h *httpHandler) Handler() interface{} {
+	return h.hd
+}
+
+func (h *httpHandler) Endpoints() []*registry.Endpoint {
+	return []*registry.Endpoint{}
+}
+
+func (h *httpHandler) Options() server.HandlerOptions {
+	return h.opts
+}
