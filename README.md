@@ -14,18 +14,18 @@ import (
 )
 
 func main() {
-        srv := httpServer.NewServer(
-                server.Name("helloworld"),
-        )
+	srv := httpServer.NewServer(
+		server.Name("helloworld"),
+	)
 
-        mux := http.NewServeMux()
-        mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-                w.Write([]byte(`hello world`))
-        })
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`hello world`))
+	})
 
-        hd := srv.NewHandler(mux)
+	hd := srv.NewHandler(mux)
 
-        srv.Handle(hd)
+	srv.Handle(hd)
 	srv.Start()
 	srv.Register()
 }
@@ -43,23 +43,23 @@ import (
 )
 
 func main() {
-        srv := httpServer.NewServer(
-                server.Name("helloworld"),
-        )
+	srv := httpServer.NewServer(
+		server.Name("helloworld"),
+	)
 
-        mux := http.NewServeMux()
-        mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-                w.Write([]byte(`hello world`))
-        })
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`hello world`))
+	})
 
-        hd := srv.NewHandler(mux)
+	hd := srv.NewHandler(mux)
 
-        srv.Handle(hd)
+	srv.Handle(hd)
 
-        service := micro.NewService(
-                micro.Server(srv),
-        )
+	service := micro.NewService(
+		micro.Server(srv),
+	)
 	service.Init()
-        service.Run()
+	service.Run()
 }
 ```
