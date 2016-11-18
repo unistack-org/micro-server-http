@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/micro/go-micro/cmd"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
 )
@@ -16,6 +17,10 @@ type httpServer struct {
 	opts server.Options
 	hd   server.Handler
 	exit chan chan error
+}
+
+func init() {
+	cmd.DefaultServers["http"] = NewServer
 }
 
 func (h *httpServer) Options() server.Options {
