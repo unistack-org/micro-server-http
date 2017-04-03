@@ -7,6 +7,7 @@ import (
 
 type httpHandler struct {
 	opts server.HandlerOptions
+	eps  []*registry.Endpoint
 	hd   interface{}
 }
 
@@ -19,7 +20,7 @@ func (h *httpHandler) Handler() interface{} {
 }
 
 func (h *httpHandler) Endpoints() []*registry.Endpoint {
-	return []*registry.Endpoint{}
+	return h.eps
 }
 
 func (h *httpHandler) Options() server.HandlerOptions {

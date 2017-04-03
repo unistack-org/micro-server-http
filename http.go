@@ -50,14 +50,29 @@ func (h *httpServer) Handle(handler server.Handler) error {
 }
 
 func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOption) server.Handler {
-	var options server.HandlerOptions
+	options := server.HandlerOptions{
+		Metadata: make(map[string]map[string]string),
+	}
+
 	for _, o := range opts {
 		o(&options)
 	}
 
+	var eps []*registry.Endpoint
+
+	if !options.Internal {
+		for name, metadata := range options.Metadata {
+			eps = append(eps, &registry.Endpoint{
+				Name:     name,
+				Metadata: metadata,
+			})
+		}
+	}
+
 	return &httpHandler{
-		opts: options,
+		eps:  eps,
 		hd:   handler,
+		opts: options,
 	}
 }
 
@@ -81,9 +96,11 @@ func (h *httpServer) Subscribe(s server.Subscriber) error {
 func (h *httpServer) Register() error {
 	h.Lock()
 	opts := h.opts
+	eps := h.hd.Endpoints()
 	h.Unlock()
 
 	service := serviceDef(opts)
+	service.Endpoints = eps
 
 	rOpts := []registry.RegisterOption{
 		registry.RegisterTTL(opts.RegisterTTL),
