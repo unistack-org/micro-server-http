@@ -79,7 +79,7 @@ func TestHTTPServer(t *testing.T) {
 	// try get service
 	service, err = reg.GetService(server.DefaultName)
 	if err == nil {
-		t.Fatal("Expected %v got %+v", registry.ErrNotFound, service)
+		t.Fatalf("Expected %v got %+v", registry.ErrNotFound, service)
 	}
 
 	// stop server
