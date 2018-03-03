@@ -1,11 +1,11 @@
 package http
 
 import (
+	"context"
+
 	"github.com/micro/go-micro/codec"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
-
-	"golang.org/x/net/context"
 )
 
 func newOptions(opt ...server.Option) server.Options {
