@@ -7,7 +7,7 @@ import (
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
 
-	"github.com/micro/misc/lib/addr"
+	"github.com/micro/util/go/lib/addr"
 )
 
 func serviceDef(opts server.Options) *registry.Service {
