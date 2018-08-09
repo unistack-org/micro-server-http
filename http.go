@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/micro/go-log"
 	"github.com/micro/go-micro/cmd"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
@@ -14,9 +15,10 @@ import (
 
 type httpServer struct {
 	sync.Mutex
-	opts server.Options
-	hd   server.Handler
-	exit chan chan error
+	opts         server.Options
+	hd           server.Handler
+	exit         chan chan error
+	registerOnce sync.Once
 }
 
 func init() {
@@ -106,6 +108,10 @@ func (h *httpServer) Register() error {
 		registry.RegisterTTL(opts.RegisterTTL),
 	}
 
+	h.registerOnce.Do(func() {
+		log.Logf("Registering node: %s", opts.Name+"-"+opts.Id)
+	})
+
 	return opts.Registry.Register(service, rOpts...)
 }
 
@@ -113,6 +119,8 @@ func (h *httpServer) Deregister() error {
 	h.Lock()
 	opts := h.opts
 	h.Unlock()
+
+	log.Logf("Deregistering node: %s", opts.Name+"-"+opts.Id)
 
 	service := serviceDef(opts)
 	return opts.Registry.Deregister(service)
@@ -128,6 +136,8 @@ func (h *httpServer) Start() error {
 	if err != nil {
 		return err
 	}
+
+	log.Logf("Listening on %s", ln.Addr().String())
 
 	h.Lock()
 	h.opts.Address = ln.Addr().String()
