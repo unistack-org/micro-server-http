@@ -28,7 +28,7 @@ type handler struct {
 	ctxType reflect.Type
 }
 
-type subscriber struct {
+type httpSubscriber struct {
 	topic      string
 	rcvr       reflect.Value
 	typ        reflect.Type
@@ -117,7 +117,7 @@ func newSubscriber(topic string, sub interface{}, opts ...server.SubscriberOptio
 		}
 	}
 
-	return &subscriber{
+	return &httpSubscriber{
 		rcvr:       reflect.ValueOf(sub),
 		typ:        reflect.TypeOf(sub),
 		topic:      topic,
@@ -182,7 +182,7 @@ func validateSubscriber(sub server.Subscriber) error {
 	return nil
 }
 
-func (s *httpServer) createSubHandler(sb *subscriber, opts server.Options) broker.Handler {
+func (s *httpServer) createSubHandler(sb *httpSubscriber, opts server.Options) broker.Handler {
 	return func(p broker.Publication) error {
 		msg := p.Message()
 		ct := msg.Header["Content-Type"]
@@ -251,7 +251,7 @@ func (s *httpServer) createSubHandler(sb *subscriber, opts server.Options) broke
 			}
 
 			go func() {
-				results <- fn(ctx, &rpcMessage{
+				results <- fn(ctx, &httpMessage{
 					topic:       sb.topic,
 					contentType: ct,
 					payload:     req.Interface(),
@@ -275,18 +275,18 @@ func (s *httpServer) createSubHandler(sb *subscriber, opts server.Options) broke
 	}
 }
 
-func (s *subscriber) Topic() string {
+func (s *httpSubscriber) Topic() string {
 	return s.topic
 }
 
-func (s *subscriber) Subscriber() interface{} {
+func (s *httpSubscriber) Subscriber() interface{} {
 	return s.subscriber
 }
 
-func (s *subscriber) Endpoints() []*registry.Endpoint {
+func (s *httpSubscriber) Endpoints() []*registry.Endpoint {
 	return s.endpoints
 }
 
-func (s *subscriber) Options() server.SubscriberOptions {
+func (s *httpSubscriber) Options() server.SubscriberOptions {
 	return s.opts
 }

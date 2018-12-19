@@ -34,7 +34,7 @@ type httpServer struct {
 	hd           server.Handler
 	exit         chan chan error
 	registerOnce sync.Once
-	subscribers  map[*subscriber][]broker.Subscriber
+	subscribers  map[*httpSubscriber][]broker.Subscriber
 }
 
 func init() {
@@ -109,9 +109,9 @@ func (h *httpServer) NewSubscriber(topic string, handler interface{}, opts ...se
 }
 
 func (h *httpServer) Subscribe(sb server.Subscriber) error {
-	sub, ok := sb.(*subscriber)
+	sub, ok := sb.(*httpSubscriber)
 	if !ok {
-		return fmt.Errorf("invalid subscriber: expected *subscriber")
+		return fmt.Errorf("invalid subscriber: expected *httpSubscriber")
 	}
 	if len(sub.handlers) == 0 {
 		return fmt.Errorf("invalid subscriber: no handler functions")
@@ -141,7 +141,7 @@ func (h *httpServer) Register() error {
 	service.Endpoints = eps
 
 	h.Lock()
-	var subscriberList []*subscriber
+	var subscriberList []*httpSubscriber
 	for e := range h.subscribers {
 		// Only advertise non internal subscribers
 		if !e.Options().Internal {

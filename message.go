@@ -1,19 +1,19 @@
 package http
 
-type rpcMessage struct {
+type httpMessage struct {
 	topic       string
 	contentType string
 	payload     interface{}
 }
 
-func (r *rpcMessage) ContentType() string {
+func (r *httpMessage) ContentType() string {
 	return r.contentType
 }
 
-func (r *rpcMessage) Topic() string {
+func (r *httpMessage) Topic() string {
 	return r.topic
 }
 
-func (r *rpcMessage) Payload() interface{} {
+func (r *httpMessage) Payload() interface{} {
 	return r.payload
 }
