@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 
+	"github.com/micro/go-micro/broker"
 	"github.com/micro/go-micro/codec"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
@@ -17,6 +18,10 @@ func newOptions(opt ...server.Option) server.Options {
 
 	for _, o := range opt {
 		o(&opts)
+	}
+
+	if opts.Broker == nil {
+		opts.Broker = broker.DefaultBroker
 	}
 
 	if opts.Registry == nil {

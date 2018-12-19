@@ -238,6 +238,7 @@ func newServer(opts ...server.Option) server.Server {
 	return &httpServer{
 		opts: newOptions(opts...),
 		exit: make(chan chan error),
+		subscribers: make(map[*httpSubscriber][]broker.Subscriber),
 	}
 }
 
