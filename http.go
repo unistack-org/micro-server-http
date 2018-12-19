@@ -189,7 +189,20 @@ func (h *httpServer) Deregister() error {
 	log.Logf("Deregistering node: %s", opts.Name+"-"+opts.Id)
 
 	service := serviceDef(opts)
-	return opts.Registry.Deregister(service)
+	if err := opts.Registry.Deregister(service); err != nil {
+		return err
+	}
+
+	h.Lock()
+	for sb, subs := range h.subscribers {
+		for _, sub := range subs {
+			log.Logf("Unsubscribing from topic: %s", sub.Topic())
+			sub.Unsubscribe()
+		}
+		h.subscribers[sb] = nil
+	}
+	h.Unlock()
+	return nil
 }
 
 func (h *httpServer) Start() error {
