@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
@@ -131,26 +130,19 @@ func TestSubscriber(t *testing.T) {
 	}
 
 	// publish
-	wg := sync.WaitGroup{}
-	go func() {
-		wg.Add(1)
-		defer wg.Done()
-		mClient := client.NewClient(
-			client.Registry(reg),
-			client.Transport(srv.Options().Transport),
-			client.Broker(srv.Options().Broker),
-		)
-		pub := micro.NewPublisher(topic, mClient)
-		if err := pub.Publish(ctx, &api.Event{}); err != nil {
-			t.Fatal(err)
-		}
-	}()
-	wg.Wait()
+	mClient := client.NewClient(
+		client.Registry(reg),
+		client.Broker(srv.Options().Broker),
+	)
+	pub := micro.NewPublisher(topic, mClient)
+	if err := pub.Publish(ctx, &api.Event{}); err != nil {
+		t.Fatal(err)
+	}
 
 	// wait cancel
 	<-ctx.Done()
 	if ctx.Err() != context.Canceled {
-		t.Fatalf("subscriber is not working, err: %s", ctx.Err())
+		t.Fatalf("subscriber is not working")
 	}
 
 	// deregister server
