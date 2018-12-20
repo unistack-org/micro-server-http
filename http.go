@@ -251,9 +251,11 @@ func (h *httpServer) Start() error {
 	go func() {
 		ch := <-h.exit
 		ch <- ln.Close()
+
+		opts.Broker.Disconnect()
 	}()
 
-	return nil
+	return opts.Broker.Connect()
 }
 
 func (h *httpServer) Stop() error {
