@@ -11,6 +11,7 @@ import (
 
 	api "github.com/micro/go-api/proto"
 	micro "github.com/micro/go-micro"
+	"github.com/micro/go-micro/broker"
 	"github.com/micro/go-micro/client"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/registry/mock"
@@ -98,7 +99,10 @@ func TestSubscriber(t *testing.T) {
 	reg := mock.NewRegistry()
 
 	// create server
-	srv := NewServer(server.Registry(reg))
+	srv := NewServer(
+		server.Registry(reg),
+		server.Broker(broker.NewBroker(broker.Registry(reg))),
+	)
 
 	// register handler
 	if err := srv.Handle(srv.NewHandler(http.NewServeMux())); err != nil {
@@ -133,6 +137,7 @@ func TestSubscriber(t *testing.T) {
 		defer wg.Done()
 		mClient := client.NewClient(
 			client.Registry(reg),
+			client.Transport(srv.Options().Transport),
 			client.Broker(srv.Options().Broker),
 		)
 		pub := micro.NewPublisher(topic, mClient)
@@ -146,6 +151,11 @@ func TestSubscriber(t *testing.T) {
 	<-ctx.Done()
 	if ctx.Err() != context.Canceled {
 		t.Fatalf("subscriber is not working, err: %s", ctx.Err())
+	}
+
+	// deregister server
+	if err := srv.Deregister(); err != nil {
+		t.Fatal(err)
 	}
 
 	// stop server
