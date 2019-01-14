@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/micro/go-micro/registry"
-	"github.com/micro/go-micro/registry/mock"
+	"github.com/micro/go-micro/registry/memory"
 	"github.com/micro/go-micro/server"
 )
 
 func TestHTTPServer(t *testing.T) {
-	reg := mock.NewRegistry()
+	reg := memory.NewRegistry()
 
 	// create server
 	srv := NewServer(server.Registry(reg))
