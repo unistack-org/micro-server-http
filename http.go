@@ -13,10 +13,10 @@ import (
 	"github.com/micro/go-micro/broker"
 	"github.com/micro/go-micro/cmd"
 	"github.com/micro/go-micro/codec"
+	"github.com/micro/go-micro/codec/jsonrpc"
+	"github.com/micro/go-micro/codec/protorpc"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
-	"github.com/micro/go-plugins/codec/jsonrpc"
-	"github.com/micro/go-plugins/codec/protorpc"
 )
 
 var (
