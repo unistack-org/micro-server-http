@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/registry/memory"
 	"github.com/micro/go-micro/server"
 )
@@ -33,11 +32,6 @@ func TestHTTPServer(t *testing.T) {
 
 	// start server
 	if err := srv.Start(); err != nil {
-		t.Fatal(err)
-	}
-
-	// register server
-	if err := srv.Register(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -69,17 +63,6 @@ func TestHTTPServer(t *testing.T) {
 
 	if s := string(b); s != "hello world" {
 		t.Fatalf("Expected response %s, got %s", "hello world", s)
-	}
-
-	// deregister server
-	if err := srv.Deregister(); err != nil {
-		t.Fatal(err)
-	}
-
-	// try get service
-	service, err = reg.GetService(server.DefaultName)
-	if err == nil {
-		t.Fatalf("Expected %v got %+v", registry.ErrNotFound, service)
 	}
 
 	// stop server

@@ -246,11 +246,17 @@ func (h *httpServer) Start() error {
 		return errors.New("Server required http.Handler")
 	}
 
+	// register
+	h.Register()
+
 	go http.Serve(ln, handler)
 
 	go func() {
 		ch := <-h.exit
 		ch <- ln.Close()
+
+		// deregister
+		h.Deregister()
 
 		opts.Broker.Disconnect()
 	}()
