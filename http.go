@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"time"
 
 	log "github.com/micro/go-log"
 	"github.com/micro/go-micro/broker"
@@ -252,7 +253,31 @@ func (h *httpServer) Start() error {
 	go http.Serve(ln, handler)
 
 	go func() {
-		ch := <-h.exit
+		t := new(time.Ticker)
+
+		// only process if it exists
+		if opts.RegisterInterval > time.Duration(0) {
+			// new ticker
+			t = time.NewTicker(opts.RegisterInterval)
+		}
+
+		// return error chan
+		var ch chan error
+
+	Loop:
+		for {
+			select {
+			// register self on interval
+			case <-t.C:
+				if err := h.Register(); err != nil {
+					log.Log("Server register error: ", err)
+				}
+			// wait for exit
+			case ch = <-h.exit:
+				break Loop
+			}
+		}
+
 		ch <- ln.Close()
 
 		// deregister
