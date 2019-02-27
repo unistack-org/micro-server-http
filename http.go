@@ -247,8 +247,14 @@ func (h *httpServer) Start() error {
 		return errors.New("Server required http.Handler")
 	}
 
+	if err = opts.Broker.Connect(); err != nil {
+		return err
+	}
+
 	// register
-	h.Register()
+	if err = h.Register(); err != nil {
+		return err
+	}
 
 	go http.Serve(ln, handler)
 
@@ -286,7 +292,7 @@ func (h *httpServer) Start() error {
 		opts.Broker.Disconnect()
 	}()
 
-	return opts.Broker.Connect()
+	return nil
 }
 
 func (h *httpServer) Stop() error {
