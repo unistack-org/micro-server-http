@@ -50,7 +50,7 @@ func TestHTTPServer(t *testing.T) {
 	}
 
 	// make request
-	rsp, err := http.Get(fmt.Sprintf("http://%s:%d", service[0].Nodes[0].Address, service[0].Nodes[0].Port))
+	rsp, err := http.Get(fmt.Sprintf("http://%s", service[0].Nodes[0].Address))
 	if err != nil {
 		t.Fatal(err)
 	}
