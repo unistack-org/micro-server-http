@@ -1,6 +1,6 @@
 # HTTP Server
 
-The HTTP Server is a go-micro.Server. It's a partial implementation which strips out codecs, transports, etc but enables you
+The HTTP Server is a go-micro.Server. It's a partial implementation which strips out codecs, transports, etc but enables you 
 to create a HTTP Server that could potentially be used for REST based API services.
 
 ## Usage
@@ -9,8 +9,8 @@ to create a HTTP Server that could potentially be used for REST based API servic
 import (
 	"net/http"
 
-	"github.com/micro/go-micro/server"
-	httpServer "github.com/micro/go-plugins/server/http"
+	"github.com/unistack-org/micro/v3/server"
+	httpServer "github.com/unistack-org/micro-server-http"
 )
 
 func main() {
@@ -37,9 +37,9 @@ Or as part of a service
 import (
 	"net/http"
 
-	"github.com/micro/go-micro"
-	"github.com/micro/go-micro/server"
-	httpServer "github.com/micro/go-plugins/server/http"
+	"github.com/unistack-org/micro/v3"
+	"github.com/unistack-org/micro/v3/server"
+	httpServer "github.com/unistack-org/micro-server-http"
 )
 
 func main() {
