@@ -141,6 +141,9 @@ func (h *httpServer) Register() error {
 	if err != nil {
 		return err
 	}
+	if len(service.Metadata) == 0 {
+		service.Metadata = make(map[string]string, 5)
+	}
 	service.Metadata["protocol"] = "http"
 	service.Endpoints = eps
 
