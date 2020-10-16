@@ -230,10 +230,11 @@ func (h *httpServer) Deregister() error {
 
 	subCtx := h.opts.Context
 	for sb, subs := range h.subscribers {
+		if cx := sb.Options().Context; cx != nil {
+			subCtx = cx
+		}
+
 		for _, sub := range subs {
-			if cx := sb.Options().Context; cx != nil {
-				subCtx = cx
-			}
 			logger.Infof("Unsubscribing from topic: %s", sub.Topic())
 			if err := sub.Unsubscribe(subCtx); err != nil {
 				logger.Errorf("failed to unsubscribe topic: %s, error: %v", sb.Topic(), err)
