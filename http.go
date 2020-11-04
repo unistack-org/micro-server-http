@@ -31,13 +31,14 @@ var (
 
 type httpServer struct {
 	sync.RWMutex
-	opts         server.Options
-	hd           server.Handler
-	exit         chan chan error
-	registerOnce sync.Once
-	subscribers  map[*httpSubscriber][]broker.Subscriber
+	opts        server.Options
+	hd          server.Handler
+	exit        chan chan error
+	subscribers map[*httpSubscriber][]broker.Subscriber
 	// used for first registration
 	registered bool
+	// registry service instance
+	rsvc *registry.Service
 }
 
 func (h *httpServer) newCodec(contentType string) (codec.NewCodec, error) {
@@ -131,10 +132,19 @@ func (h *httpServer) Subscribe(sb server.Subscriber) error {
 }
 
 func (h *httpServer) Register() error {
-	h.Lock()
-	opts := h.opts
+	h.RLock()
 	eps := h.hd.Endpoints()
-	h.Unlock()
+	rsvc := h.rsvc
+	config := h.opts
+	h.RUnlock()
+
+	// if service already filled, reuse it and return early
+	if rsvc != nil {
+		if err := server.DefaultRegisterFunc(rsvc, config); err != nil {
+			return err
+		}
+		return nil
+	}
 
 	service, err := server.NewRegistryService(h)
 	if err != nil {
@@ -154,78 +164,88 @@ func (h *httpServer) Register() error {
 	sort.Slice(subscriberList, func(i, j int) bool {
 		return subscriberList[i].topic > subscriberList[j].topic
 	})
+
 	for _, e := range subscriberList {
 		service.Endpoints = append(service.Endpoints, e.Endpoints()...)
 	}
 	h.Unlock()
 
-	rOpts := []registry.RegisterOption{
-		registry.RegisterTTL(opts.RegisterTTL),
+	h.RLock()
+	registered := h.registered
+	h.RUnlock()
+
+	if !registered {
+		if config.Logger.V(logger.InfoLevel) {
+			config.Logger.Info("Registry [%s] Registering node: %s", config.Registry.String(), service.Nodes[0].Id)
+		}
 	}
 
-	h.registerOnce.Do(func() {
-		logger.Infof("Registering node: %s", opts.Name+"-"+opts.Id)
-	})
-
-	if err := opts.Registry.Register(h.opts.Context, service, rOpts...); err != nil {
+	// register the service
+	if err := server.DefaultRegisterFunc(service, config); err != nil {
 		return err
+	}
+
+	// already registered? don't need to register subscribers
+	if registered {
+		return nil
 	}
 
 	h.Lock()
 	defer h.Unlock()
 
-	if h.registered {
-		return nil
-	}
-	h.registered = true
-
-	subCtx := h.opts.Context
-
 	for sb := range h.subscribers {
-		handler := h.createSubHandler(sb, opts)
-		var subOpts []broker.SubscribeOption
+		handler := h.createSubHandler(sb, config)
+		var opts []broker.SubscribeOption
 		if queue := sb.Options().Queue; len(queue) > 0 {
-			subOpts = append(subOpts, broker.Queue(queue))
+			opts = append(opts, broker.SubscribeGroup(queue))
 		}
 
+		subCtx := config.Context
 		if cx := sb.Options().Context; cx != nil {
 			subCtx = cx
 		}
+		opts = append(opts, broker.SubscribeContext(subCtx))
+		opts = append(opts, broker.SubscribeAutoAck(sb.Options().AutoAck))
 
-		if !sb.Options().AutoAck {
-			subOpts = append(subOpts, broker.DisableAutoAck())
-		}
-
-		sub, err := opts.Broker.Subscribe(subCtx, sb.Topic(), handler, subOpts...)
+		sub, err := config.Broker.Subscribe(subCtx, sb.Topic(), handler, opts...)
 		if err != nil {
 			return err
 		}
 		h.subscribers[sb] = []broker.Subscriber{sub}
 	}
+
+	h.registered = true
+	h.rsvc = service
+
 	return nil
 }
 
 func (h *httpServer) Deregister() error {
-	h.Lock()
-	opts := h.opts
-	h.Unlock()
-
-	logger.Infof("Deregistering node: %s", opts.Name+"-"+opts.Id)
+	h.RLock()
+	config := h.opts
+	h.RUnlock()
 
 	service, err := server.NewRegistryService(h)
 	if err != nil {
 		return err
 	}
 
-	if err := opts.Registry.Deregister(h.opts.Context, service); err != nil {
+	if config.Logger.V(logger.InfoLevel) {
+		config.Logger.Info("Deregistering node: %s", service.Nodes[0].Id)
+	}
+
+	if err := server.DefaultDeregisterFunc(service, config); err != nil {
 		return err
 	}
 
 	h.Lock()
+	h.rsvc = nil
+
 	if !h.registered {
 		h.Unlock()
 		return nil
 	}
+
 	h.registered = false
 
 	subCtx := h.opts.Context
@@ -235,9 +255,9 @@ func (h *httpServer) Deregister() error {
 		}
 
 		for _, sub := range subs {
-			logger.Infof("Unsubscribing from topic: %s", sub.Topic())
+			config.Logger.Info("Unsubscribing from topic: %s", sub.Topic())
 			if err := sub.Unsubscribe(subCtx); err != nil {
-				logger.Errorf("failed to unsubscribe topic: %s, error: %v", sb.Topic(), err)
+				config.Logger.Error("failed to unsubscribe topic: %s, error: %v", sb.Topic(), err)
 				return err
 			}
 		}
@@ -248,19 +268,19 @@ func (h *httpServer) Deregister() error {
 }
 
 func (h *httpServer) Start() error {
-	h.Lock()
-	opts := h.opts
+	h.RLock()
+	config := h.opts
 	hd := h.hd
-	h.Unlock()
+	h.RUnlock()
 
-	config := h.Options()
-
-	ln, err := net.Listen("tcp", opts.Address)
+	ln, err := net.Listen("tcp", config.Address)
 	if err != nil {
 		return err
 	}
 
-	logger.Infof("Listening on %s", ln.Addr().String())
+	if config.Logger.V(logger.InfoLevel) {
+		config.Logger.Info("Listening on %s", ln.Addr().String())
+	}
 
 	h.Lock()
 	h.opts.Address = ln.Addr().String()
@@ -271,13 +291,13 @@ func (h *httpServer) Start() error {
 		return errors.New("Server required http.Handler")
 	}
 
-	if err = opts.Broker.Connect(h.opts.Context); err != nil {
+	if err = config.Broker.Connect(h.opts.Context); err != nil {
 		return err
 	}
 
-	if err = h.opts.RegisterCheck(h.opts.Context); err != nil {
-		if logger.V(logger.ErrorLevel) {
-			logger.Errorf("Server %s-%s register check error: %s", config.Name, config.Id, err)
+	if err = config.RegisterCheck(h.opts.Context); err != nil {
+		if config.Logger.V(logger.ErrorLevel) {
+			config.Logger.Error("Server %s-%s register check error: %s", config.Name, config.Id, err)
 		}
 	} else {
 		if err = h.Register(); err != nil {
@@ -291,9 +311,9 @@ func (h *httpServer) Start() error {
 		t := new(time.Ticker)
 
 		// only process if it exists
-		if opts.RegisterInterval > time.Duration(0) {
+		if config.RegisterInterval > time.Duration(0) {
 			// new ticker
-			t = time.NewTicker(opts.RegisterInterval)
+			t = time.NewTicker(config.RegisterInterval)
 		}
 
 		// return error chan
@@ -307,31 +327,31 @@ func (h *httpServer) Start() error {
 				h.RLock()
 				registered := h.registered
 				h.RUnlock()
-				rerr := h.opts.RegisterCheck(h.opts.Context)
+				rerr := config.RegisterCheck(h.opts.Context)
 				if rerr != nil && registered {
-					if logger.V(logger.ErrorLevel) {
-						logger.Errorf("Server %s-%s register check error: %s, deregister it", config.Name, config.Id, rerr)
+					if config.Logger.V(logger.ErrorLevel) {
+						config.Logger.Error("Server %s-%s register check error: %s, deregister it", config.Name, config.Id, rerr)
 					}
 					// deregister self in case of error
 					if err := h.Deregister(); err != nil {
-						if logger.V(logger.ErrorLevel) {
-							logger.Errorf("Server %s-%s deregister error: %s", config.Name, config.Id, err)
+						if config.Logger.V(logger.ErrorLevel) {
+							config.Logger.Error("Server %s-%s deregister error: %s", config.Name, config.Id, err)
 						}
 					}
 				} else if rerr != nil && !registered {
-					if logger.V(logger.ErrorLevel) {
-						logger.Errorf("Server %s-%s register check error: %s", config.Name, config.Id, rerr)
+					if config.Logger.V(logger.ErrorLevel) {
+						config.Logger.Error("Server %s-%s register check error: %s", config.Name, config.Id, rerr)
 					}
 					continue
 				}
 				if err := h.Register(); err != nil {
-					if logger.V(logger.ErrorLevel) {
-						logger.Errorf("Server %s-%s register error: %s", config.Name, config.Id, err)
+					if config.Logger.V(logger.ErrorLevel) {
+						config.Logger.Error("Server %s-%s register error: %s", config.Name, config.Id, err)
 					}
 				}
 
 				if err := h.Register(); err != nil {
-					logger.Error("Server register error: ", err)
+					config.Logger.Error("Server register error: ", err)
 				}
 			// wait for exit
 			case ch = <-h.exit:
@@ -344,7 +364,7 @@ func (h *httpServer) Start() error {
 		// deregister
 		h.Deregister()
 
-		opts.Broker.Disconnect(h.opts.Context)
+		config.Broker.Disconnect(config.Context)
 	}()
 
 	return nil
