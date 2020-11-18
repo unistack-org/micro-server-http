@@ -78,13 +78,7 @@ func (h *httpServer) Handle(handler server.Handler) error {
 }
 
 func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOption) server.Handler {
-	options := server.HandlerOptions{
-		Metadata: make(map[string]map[string]string),
-	}
-
-	for _, o := range opts {
-		o(&options)
-	}
+	options := server.NewHandlerOptions(opts...)
 
 	var eps []*registry.Endpoint
 

@@ -1,12 +1,15 @@
 package http
 
-import "github.com/unistack-org/micro/v3/codec"
+import (
+	"github.com/unistack-org/micro/v3/codec"
+	"github.com/unistack-org/micro/v3/metadata"
+)
 
 type httpMessage struct {
 	topic       string
 	payload     interface{}
 	contentType string
-	header      map[string]string
+	header      metadata.Metadata
 	body        []byte
 	codec       codec.Reader
 }
@@ -23,7 +26,7 @@ func (r *httpMessage) ContentType() string {
 	return r.contentType
 }
 
-func (r *httpMessage) Header() map[string]string {
+func (r *httpMessage) Header() metadata.Metadata {
 	return r.header
 }
 
