@@ -285,8 +285,8 @@ github.com/unistack-org/micro/v3 v3.0.0-20200827083227-aa99378adc6e/go.mod h1:rP
 github.com/unistack-org/micro/v3 v3.0.0-gamma.0.20200909210629-caec730248b1/go.mod h1:mmqHR9WelHUXqg2mELjsQ+FJHcWs6mNmXg+wEYO2T3c=
 github.com/unistack-org/micro/v3 v3.0.0-gamma.0.20200920135754-1cbd1d2bad83/go.mod h1:HUzMG4Mcy97958VxWTg8zuazZgwQ/aoLZ8wtBVONwRE=
 github.com/unistack-org/micro/v3 v3.0.0-gamma.0.20200922103357-4c4fa00a5d94/go.mod h1:aL+8VhSXpx0SuEeXPOWUo5BgS7kyvWYobeXFay90UUM=
-github.com/unistack-org/micro/v3 v3.0.2-0.20201125074313-3f6852030fef h1:qjbElyHD8jVVpSVcmJI/q4soLbHizM1UTrUjFXwudPA=
-github.com/unistack-org/micro/v3 v3.0.2-0.20201125074313-3f6852030fef/go.mod h1:RxbWu3Q2jWpw0er6CwX2BnGdIDfUZg/0c4bMxzAzaH0=
+github.com/unistack-org/micro/v3 v3.0.2-0.20201125221305-0d93b2c31c79 h1:Y4EZoEml8louFP6encMeFhxGaNh91UdYOvxkjf7JoTc=
+github.com/unistack-org/micro/v3 v3.0.2-0.20201125221305-0d93b2c31c79/go.mod h1:RxbWu3Q2jWpw0er6CwX2BnGdIDfUZg/0c4bMxzAzaH0=
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/vultr/govultr v0.1.4/go.mod h1:9H008Uxr/C4vFNGLqKx232C206GL0PBHzOP0809bGNA=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
