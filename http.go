@@ -10,23 +10,11 @@ import (
 	"sync"
 	"time"
 
-	jsonrpc "github.com/unistack-org/micro-codec-jsonrpc"
-	protorpc "github.com/unistack-org/micro-codec-protorpc"
 	"github.com/unistack-org/micro/v3/broker"
 	"github.com/unistack-org/micro/v3/codec"
 	"github.com/unistack-org/micro/v3/logger"
 	"github.com/unistack-org/micro/v3/registry"
 	"github.com/unistack-org/micro/v3/server"
-)
-
-var (
-	defaultCodecs = map[string]codec.NewCodec{
-		"application/json":         jsonrpc.NewCodec,
-		"application/json-rpc":     jsonrpc.NewCodec,
-		"application/protobuf":     protorpc.NewCodec,
-		"application/proto-rpc":    protorpc.NewCodec,
-		"application/octet-stream": protorpc.NewCodec,
-	}
 )
 
 type httpServer struct {
@@ -41,14 +29,11 @@ type httpServer struct {
 	rsvc *registry.Service
 }
 
-func (h *httpServer) newCodec(contentType string) (codec.NewCodec, error) {
-	if cf, ok := h.opts.Codecs[contentType]; ok {
+func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
+	if cf, ok := h.opts.Codecs[ct]; ok {
 		return cf, nil
 	}
-	if cf, ok := defaultCodecs[contentType]; ok {
-		return cf, nil
-	}
-	return nil, fmt.Errorf("Unsupported Content-Type: %s", contentType)
+	return nil, codec.ErrUnknownContentType
 }
 
 func (h *httpServer) Options() server.Options {

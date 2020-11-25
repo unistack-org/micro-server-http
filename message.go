@@ -11,7 +11,7 @@ type httpMessage struct {
 	contentType string
 	header      metadata.Metadata
 	body        []byte
-	codec       codec.Reader
+	codec       codec.Codec
 }
 
 func (r *httpMessage) Topic() string {
@@ -34,6 +34,6 @@ func (r *httpMessage) Body() []byte {
 	return r.body
 }
 
-func (r *httpMessage) Codec() codec.Reader {
+func (r *httpMessage) Codec() codec.Codec {
 	return r.codec
 }
