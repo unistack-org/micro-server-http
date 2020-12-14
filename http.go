@@ -155,7 +155,7 @@ func (h *httpServer) Register() error {
 
 	if !registered {
 		if config.Logger.V(logger.InfoLevel) {
-			config.Logger.Info("Registry [%s] Registering node: %s", config.Registry.String(), service.Nodes[0].Id)
+			config.Logger.Infof("Registry [%s] Registering node: %s", config.Registry.String(), service.Nodes[0].Id)
 		}
 	}
 
@@ -210,7 +210,7 @@ func (h *httpServer) Deregister() error {
 	}
 
 	if config.Logger.V(logger.InfoLevel) {
-		config.Logger.Info("Deregistering node: %s", service.Nodes[0].Id)
+		config.Logger.Infof("Deregistering node: %s", service.Nodes[0].Id)
 	}
 
 	if err := server.DefaultDeregisterFunc(service, config); err != nil {
@@ -234,9 +234,9 @@ func (h *httpServer) Deregister() error {
 		}
 
 		for _, sub := range subs {
-			config.Logger.Info("Unsubscribing from topic: %s", sub.Topic())
+			config.Logger.Infof("Unsubscribing from topic: %s", sub.Topic())
 			if err := sub.Unsubscribe(subCtx); err != nil {
-				config.Logger.Error("failed to unsubscribe topic: %s, error: %v", sb.Topic(), err)
+				config.Logger.Errorf("failed to unsubscribe topic: %s, error: %v", sb.Topic(), err)
 				return err
 			}
 		}
@@ -258,7 +258,7 @@ func (h *httpServer) Start() error {
 	}
 
 	if config.Logger.V(logger.InfoLevel) {
-		config.Logger.Info("Listening on %s", ln.Addr().String())
+		config.Logger.Infof("Listening on %s", ln.Addr().String())
 	}
 
 	h.Lock()
@@ -276,7 +276,7 @@ func (h *httpServer) Start() error {
 
 	if err = config.RegisterCheck(h.opts.Context); err != nil {
 		if config.Logger.V(logger.ErrorLevel) {
-			config.Logger.Error("Server %s-%s register check error: %s", config.Name, config.Id, err)
+			config.Logger.Errorf("Server %s-%s register check error: %s", config.Name, config.Id, err)
 		}
 	} else {
 		if err = h.Register(); err != nil {
@@ -309,28 +309,28 @@ func (h *httpServer) Start() error {
 				rerr := config.RegisterCheck(h.opts.Context)
 				if rerr != nil && registered {
 					if config.Logger.V(logger.ErrorLevel) {
-						config.Logger.Error("Server %s-%s register check error: %s, deregister it", config.Name, config.Id, rerr)
+						config.Logger.Errorf("Server %s-%s register check error: %s, deregister it", config.Name, config.Id, rerr)
 					}
 					// deregister self in case of error
 					if err := h.Deregister(); err != nil {
 						if config.Logger.V(logger.ErrorLevel) {
-							config.Logger.Error("Server %s-%s deregister error: %s", config.Name, config.Id, err)
+							config.Logger.Errorf("Server %s-%s deregister error: %s", config.Name, config.Id, err)
 						}
 					}
 				} else if rerr != nil && !registered {
 					if config.Logger.V(logger.ErrorLevel) {
-						config.Logger.Error("Server %s-%s register check error: %s", config.Name, config.Id, rerr)
+						config.Logger.Errorf("Server %s-%s register check error: %s", config.Name, config.Id, rerr)
 					}
 					continue
 				}
 				if err := h.Register(); err != nil {
 					if config.Logger.V(logger.ErrorLevel) {
-						config.Logger.Error("Server %s-%s register error: %s", config.Name, config.Id, err)
+						config.Logger.Errorf("Server %s-%s register error: %s", config.Name, config.Id, err)
 					}
 				}
 
 				if err := h.Register(); err != nil {
-					config.Logger.Error("Server register error: ", err)
+					config.Logger.Errorf("Server register error: %s", err)
 				}
 			// wait for exit
 			case ch = <-h.exit:
