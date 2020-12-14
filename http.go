@@ -252,6 +252,10 @@ func (h *httpServer) Start() error {
 	hd := h.hd
 	h.RUnlock()
 
+	if hd == nil {
+		return errors.New("Server required http.Handler")
+	}
+
 	ln, err := net.Listen("tcp", config.Address)
 	if err != nil {
 		return err
