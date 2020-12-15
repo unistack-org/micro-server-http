@@ -2,6 +2,7 @@
 package http
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"github.com/unistack-org/micro/v3/logger"
 	"github.com/unistack-org/micro/v3/registry"
 	"github.com/unistack-org/micro/v3/server"
+	"golang.org/x/net/netutil"
 )
 
 type httpServer struct {
@@ -256,17 +258,36 @@ func (h *httpServer) Start() error {
 		return errors.New("Server required http.Handler")
 	}
 
-	ln, err := net.Listen("tcp", config.Address)
-	if err != nil {
-		return err
+	// micro: config.Transport.Listen(config.Address)
+	var ts net.Listener
+
+	if l := config.Listener; l != nil {
+		ts = l
+	} else {
+		var err error
+
+		// check the tls config for secure connect
+		if tc := config.TLSConfig; tc != nil {
+			ts, err = tls.Listen("tcp", config.Address, tc)
+			// otherwise just plain tcp listener
+		} else {
+			ts, err = net.Listen("tcp", config.Address)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	if config.MaxConn > 0 {
+		ts = netutil.LimitListener(ts, config.MaxConn)
 	}
 
 	if config.Logger.V(logger.InfoLevel) {
-		config.Logger.Infof("Listening on %s", ln.Addr().String())
+		config.Logger.Infof("Listening on %s", ts.Addr().String())
 	}
 
 	h.Lock()
-	h.opts.Address = ln.Addr().String()
+	h.opts.Address = ts.Addr().String()
 	h.Unlock()
 
 	handler, ok := hd.Handler().(http.Handler)
@@ -274,11 +295,11 @@ func (h *httpServer) Start() error {
 		return errors.New("Server required http.Handler")
 	}
 
-	if err = config.Broker.Connect(h.opts.Context); err != nil {
+	if err := config.Broker.Connect(h.opts.Context); err != nil {
 		return err
 	}
 
-	if err = config.RegisterCheck(h.opts.Context); err != nil {
+	if err := config.RegisterCheck(h.opts.Context); err != nil {
 		if config.Logger.V(logger.ErrorLevel) {
 			config.Logger.Errorf("Server %s-%s register check error: %s", config.Name, config.Id, err)
 		}
@@ -288,7 +309,7 @@ func (h *httpServer) Start() error {
 		}
 	}
 
-	go http.Serve(ln, handler)
+	go http.Serve(ts, handler)
 
 	go func() {
 		t := new(time.Ticker)
@@ -342,12 +363,16 @@ func (h *httpServer) Start() error {
 			}
 		}
 
-		ch <- ln.Close()
+		ch <- ts.Close()
 
 		// deregister
-		h.Deregister()
+		if err := h.Deregister(); err != nil {
+			config.Logger.Errorf("Server deregister error: %s", err)
+		}
 
-		config.Broker.Disconnect(config.Context)
+		if err := config.Broker.Disconnect(config.Context); err != nil {
+			config.Logger.Errorf("Broker disconnect error: %s", err)
+		}
 	}()
 
 	return nil
