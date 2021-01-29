@@ -14,7 +14,7 @@ import (
 	"github.com/unistack-org/micro/v3/broker"
 	"github.com/unistack-org/micro/v3/codec"
 	"github.com/unistack-org/micro/v3/logger"
-	"github.com/unistack-org/micro/v3/registry"
+	"github.com/unistack-org/micro/v3/register"
 	"github.com/unistack-org/micro/v3/server"
 	"golang.org/x/net/netutil"
 )
@@ -27,8 +27,8 @@ type httpServer struct {
 	subscribers map[*httpSubscriber][]broker.Subscriber
 	// used for first registration
 	registered bool
-	// registry service instance
-	rsvc *registry.Service
+	// register service instance
+	rsvc *register.Service
 }
 
 func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
@@ -67,11 +67,11 @@ func (h *httpServer) Handle(handler server.Handler) error {
 func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOption) server.Handler {
 	options := server.NewHandlerOptions(opts...)
 
-	var eps []*registry.Endpoint
+	var eps []*register.Endpoint
 
 	if !options.Internal {
 		for name, metadata := range options.Metadata {
-			eps = append(eps, &registry.Endpoint{
+			eps = append(eps, &register.Endpoint{
 				Name:     name,
 				Metadata: metadata,
 			})
@@ -127,7 +127,7 @@ func (h *httpServer) Register() error {
 		return nil
 	}
 
-	service, err := server.NewRegistryService(h)
+	service, err := server.NewRegisterService(h)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (h *httpServer) Register() error {
 
 	if !registered {
 		if config.Logger.V(logger.InfoLevel) {
-			config.Logger.Infof(config.Context, "Registry [%s] Registering node: %s", config.Registry.String(), service.Nodes[0].Id)
+			config.Logger.Infof(config.Context, "Register [%s] Registering node: %s", config.Register.String(), service.Nodes[0].Id)
 		}
 	}
 
@@ -206,7 +206,7 @@ func (h *httpServer) Deregister() error {
 	config := h.opts
 	h.RUnlock()
 
-	service, err := server.NewRegistryService(h)
+	service, err := server.NewRegisterService(h)
 	if err != nil {
 		return err
 	}
@@ -386,6 +386,10 @@ func (h *httpServer) Stop() error {
 
 func (h *httpServer) String() string {
 	return "http"
+}
+
+func (h *httpServer) Name() string {
+	return h.opts.Name
 }
 
 func NewServer(opts ...server.Option) server.Server {
