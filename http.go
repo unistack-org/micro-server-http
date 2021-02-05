@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/unistack-org/micro/v3/logger"
 	"github.com/unistack-org/micro/v3/register"
 	"github.com/unistack-org/micro/v3/server"
+	rutil "github.com/unistack-org/micro/v3/util/router"
 	"golang.org/x/net/netutil"
 )
 
@@ -55,9 +58,6 @@ func (h *httpServer) Init(opts ...server.Option) error {
 }
 
 func (h *httpServer) Handle(handler server.Handler) error {
-	if _, ok := handler.Handler().(http.Handler); !ok {
-		return errors.New("Handle requires http.Handler")
-	}
 	h.Lock()
 	h.hd = handler
 	h.Unlock()
@@ -78,11 +78,77 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 		}
 	}
 
-	return &httpHandler{
-		eps:  eps,
-		hd:   handler,
-		opts: options,
+	hdlr := &httpHandler{
+		eps:   eps,
+		hd:    handler,
+		opts:  options,
+		sopts: h.opts,
 	}
+
+	tp := reflect.TypeOf(handler)
+
+	/*
+	   for m := 0; m < tp.NumMethod(); m++ {
+	   	    if e := register.ExtractEndpoint(tp.Method(m)); e != nil {
+	   	    	      e.Name = name + "." + e.Name
+
+	   	    	            for k, v := range options.Metadata[e.Name] {
+	   	    	            	        e.Metadata[k] = v
+	   	    	            	              }
+
+	   	    	            	                    eps = append(eps, e)
+	   	    	            	                        }
+	   	    	            	                          }
+
+	*/
+
+	hdlr.handlers = make(map[string][]patHandler)
+	for hn, md := range options.Metadata {
+		cmp, err := rutil.Parse(md["Path"])
+		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "parsing path pattern err: %v", err)
+			continue
+		}
+		tpl := cmp.Compile()
+		pat, err := rutil.NewPattern(tpl.Version, tpl.OpCodes, tpl.Pool, tpl.Verb)
+		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "creating new pattern err: %v", err)
+			continue
+		}
+
+		var method reflect.Method
+		mname := hn[strings.Index(hn, ".")+1:]
+		for m := 0; m < tp.NumMethod(); m++ {
+			mn := tp.Method(m)
+			if mn.Name != mname {
+				continue
+			}
+			method = mn
+			break
+		}
+
+		if method.Name == "" && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "nil method for %s", mname)
+			continue
+		}
+
+		mtype, err := prepareEndpoint(method)
+		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "%v", err)
+			continue
+		} else if mtype == nil {
+			continue
+		}
+
+		rcvr := reflect.ValueOf(handler)
+		name := reflect.Indirect(rcvr).Type().Name()
+
+		pth := patHandler{pat: pat, mtype: mtype, name: name, rcvr: rcvr}
+		hdlr.name = name
+		hdlr.handlers[md["Method"]] = append(hdlr.handlers[md["Method"]], pth)
+	}
+
+	return hdlr
 }
 
 func (h *httpServer) NewSubscriber(topic string, handler interface{}, opts ...server.SubscriberOption) server.Subscriber {
@@ -254,10 +320,6 @@ func (h *httpServer) Start() error {
 	hd := h.hd
 	h.RUnlock()
 
-	if hd == nil {
-		return errors.New("Server required http.Handler")
-	}
-
 	// micro: config.Transport.Listen(config.Address)
 	var ts net.Listener
 
@@ -291,6 +353,10 @@ func (h *httpServer) Start() error {
 	h.Unlock()
 
 	handler, ok := hd.Handler().(http.Handler)
+	if !ok {
+		handler, ok = hd.(http.Handler)
+	}
+
 	if !ok {
 		return errors.New("Server required http.Handler")
 	}
