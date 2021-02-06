@@ -12,7 +12,6 @@ import (
 	"github.com/unistack-org/micro/v3/metadata"
 	"github.com/unistack-org/micro/v3/register"
 	"github.com/unistack-org/micro/v3/server"
-	"github.com/unistack-org/micro/v3/util/qson"
 	rflutil "github.com/unistack-org/micro/v3/util/reflect"
 	rutil "github.com/unistack-org/micro/v3/util/router"
 )
@@ -126,8 +125,7 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// get fields from url values
 	if len(r.URL.RawQuery) > 0 {
-		umd := make(map[string]interface{})
-		err = qson.Unmarshal(&umd, r.URL.RawQuery)
+		umd, err := rflutil.URLMap(r.URL.RawQuery)
 		if err != nil {
 			h.errorHandler(ctx, h, w, r, err, http.StatusBadRequest)
 		}
@@ -158,6 +156,7 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//function := hldr.rcvr
 	var returnValues []reflect.Value
 
+	matches = rflutil.FlattenMap(matches)
 	if err = rflutil.MergeMap(argv.Interface(), matches); err != nil {
 		h.errorHandler(ctx, h, w, r, err, http.StatusBadRequest)
 		return
