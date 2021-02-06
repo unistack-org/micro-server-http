@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"strings"
@@ -66,6 +67,8 @@ func (h *httpHandler) Options() server.HandlerOptions {
 
 func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	defer r.Body.Close()
 
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/") {
@@ -155,6 +158,10 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	function := hldr.mtype.method.Func
 	//function := hldr.rcvr
 	var returnValues []reflect.Value
+
+	if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
+		h.errorHandler(ctx, h, w, r, err, http.StatusInternalServerError)
+	}
 
 	matches = rflutil.FlattenMap(matches)
 	if err = rflutil.MergeMap(argv.Interface(), matches); err != nil {
