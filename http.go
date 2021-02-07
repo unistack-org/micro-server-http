@@ -375,7 +375,17 @@ func (h *httpServer) Start() error {
 		}
 	}
 
-	go http.Serve(ts, handler)
+	fn := handler
+	if h.opts.Context != nil {
+		if mwf, ok := h.opts.Context.Value(middlewareKey{}).([]func(http.Handler) http.Handler); ok && len(mwf) > 0 {
+			// wrap the handler func
+			for i := len(mwf); i > 0; i-- {
+				fn = mwf[i-1](fn)
+			}
+		}
+	}
+
+	go http.Serve(ts, fn)
 
 	go func() {
 		t := new(time.Ticker)

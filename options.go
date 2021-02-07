@@ -1,6 +1,11 @@
 package http
 
-import "context"
+import (
+	"context"
+	"net/http"
+
+	"github.com/unistack-org/micro/v3/server"
+)
 
 type rspCodeKey struct{}
 type rspCodeVal struct {
@@ -21,4 +26,10 @@ func GetRspCode(ctx context.Context) int {
 		code = rsp.code
 	}
 	return code
+}
+
+type middlewareKey struct{}
+
+func Middleware(mw ...func(http.Handler) http.Handler) server.Option {
+	return server.SetOption(middlewareKey{}, mw)
 }
