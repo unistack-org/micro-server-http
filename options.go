@@ -33,3 +33,9 @@ type middlewareKey struct{}
 func Middleware(mw ...func(http.Handler) http.Handler) server.Option {
 	return server.SetOption(middlewareKey{}, mw)
 }
+
+type serverKey struct{}
+
+func Server(hs *http.Server) server.Option {
+	return server.SetOption(serverKey{}, hs)
+}

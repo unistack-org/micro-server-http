@@ -376,6 +376,8 @@ func (h *httpServer) Start() error {
 	}
 
 	fn := handler
+	var srvFunc func(net.Listener) error
+
 	if h.opts.Context != nil {
 		if mwf, ok := h.opts.Context.Value(middlewareKey{}).([]func(http.Handler) http.Handler); ok && len(mwf) > 0 {
 			// wrap the handler func
@@ -383,9 +385,17 @@ func (h *httpServer) Start() error {
 				fn = mwf[i-1](fn)
 			}
 		}
+		if hs, ok := h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
+			hs.Handler = fn
+			srvFunc = hs.Serve
+		}
 	}
 
-	go http.Serve(ts, fn)
+	if srvFunc != nil {
+		go srvFunc(ts)
+	} else {
+		go http.Serve(ts, fn)
+	}
 
 	go func() {
 		t := new(time.Ticker)
