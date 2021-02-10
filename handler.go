@@ -117,7 +117,7 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	md, ok := metadata.FromContext(ctx)
+	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		md = metadata.New(0)
 	}
@@ -188,7 +188,7 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// define the handler func
 	fn := func(ctx context.Context, req server.Request, rsp interface{}) (err error) {
 		ctx = context.WithValue(ctx, rspCodeKey{}, &rspCodeVal{})
-		ctx = metadata.NewContext(ctx, md)
+		ctx = metadata.NewIncomingContext(ctx, md)
 		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(ctx), reflect.ValueOf(argv.Interface()), reflect.ValueOf(rsp)})
 
 		scode = GetRspCode(ctx)
