@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/unistack-org/micro/v3/server"
@@ -10,6 +11,18 @@ import (
 type rspCodeKey struct{}
 type rspCodeVal struct {
 	code int
+}
+
+func SetError(err interface{}) error {
+	return &Error{err: err}
+}
+
+type Error struct {
+	err interface{}
+}
+
+func (err *Error) Error() string {
+	return fmt.Sprintf("%v", err.err)
 }
 
 // SetRspCode saves response code in context, must be used by handler to specify http code

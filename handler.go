@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/unistack-org/micro/v3/codec"
+	"github.com/unistack-org/micro/v3/errors"
 	"github.com/unistack-org/micro/v3/logger"
 	"github.com/unistack-org/micro/v3/metadata"
 	"github.com/unistack-org/micro/v3/register"
@@ -206,12 +207,20 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if appErr := fn(ctx, hr, replyv.Interface()); appErr != nil {
-		b, err = cf.Marshal(appErr)
+		switch verr := appErr.(type) {
+		case *errors.Error:
+			scode = int(verr.Code)
+			b, err = cf.Marshal(verr)
+		case *Error:
+			b, err = cf.Marshal(verr.err)
+		default:
+			b, err = cf.Marshal(appErr)
+		}
 	} else {
 		b, err = cf.Marshal(replyv.Interface())
 	}
 	if err != nil && h.sopts.Logger.V(logger.ErrorLevel) {
-		h.sopts.Logger.Errorf(h.sopts.Context, "XXXXX: %v", err)
+		h.sopts.Logger.Errorf(h.sopts.Context, "handler err: %v", err)
 		return
 	}
 
