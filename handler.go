@@ -67,7 +67,7 @@ func (h *httpHandler) Options() server.HandlerOptions {
 }
 
 func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := metadata.NewContext(r.Context(), nil)
 
 	defer r.Body.Close()
 
@@ -187,15 +187,19 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var scode int
 	// define the handler func
-	fn := func(ctx context.Context, req server.Request, rsp interface{}) (err error) {
-		ctx = context.WithValue(ctx, rspCodeKey{}, &rspCodeVal{})
-		ctx = metadata.NewIncomingContext(ctx, md)
-		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(ctx), reflect.ValueOf(argv.Interface()), reflect.ValueOf(rsp)})
+	fn := func(fctx context.Context, req server.Request, rsp interface{}) (err error) {
+		fctx = context.WithValue(fctx, rspCodeKey{}, &rspCodeVal{})
+		fctx = metadata.NewIncomingContext(fctx, md)
+		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(fctx), reflect.ValueOf(argv.Interface()), reflect.ValueOf(rsp)})
 
-		scode = GetRspCode(ctx)
+		scode = GetRspCode(fctx)
 		// The return value for the method is an error.
 		if rerr := returnValues[0].Interface(); rerr != nil {
 			err = rerr.(error)
+		}
+
+		if md, ok := metadata.FromOutgoingContext(fctx); ok {
+			metadata.SetOutgoingContext(ctx, md)
 		}
 
 		return err
