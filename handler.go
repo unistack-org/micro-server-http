@@ -224,6 +224,12 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if md, ok := metadata.FromOutgoingContext(ctx); ok {
+		for k, v := range md {
+			w.Header().Set(k, v)
+		}
+	}
+
 	w.Header().Set("content-Type", ct)
 	if scode != 0 {
 		w.WriteHeader(scode)
