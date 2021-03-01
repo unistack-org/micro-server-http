@@ -13,14 +13,17 @@ type rspCodeVal struct {
 	code int
 }
 
+// SetError pass error to caller
 func SetError(err interface{}) error {
 	return &Error{err: err}
 }
 
+// Error struct holds error
 type Error struct {
 	err interface{}
 }
 
+// Error func for error interface
 func (err *Error) Error() string {
 	return fmt.Sprintf("%v", err.err)
 }
@@ -43,12 +46,21 @@ func GetRspCode(ctx context.Context) int {
 
 type middlewareKey struct{}
 
+// Middleware passes http middlewares
 func Middleware(mw ...func(http.Handler) http.Handler) server.Option {
 	return server.SetOption(middlewareKey{}, mw)
 }
 
 type serverKey struct{}
 
+// Server provide ability to pass *http.Server
 func Server(hs *http.Server) server.Option {
 	return server.SetOption(serverKey{}, hs)
+}
+
+type errorHandlerKey struct{}
+
+// ErrorHandler specifies handler for errors
+func ErrorHandler(fn func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)) server.Option {
+	return server.SetOption(errorHandlerKey{}, fn)
 }

@@ -2,6 +2,7 @@
 package http
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -85,6 +86,10 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 		sopts: h.opts,
 	}
 
+	hdlr.errorHandler = DefaultErrorHandler
+	if fn, ok := options.Context.Value(errorHandlerKey{}).(func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)); ok && fn != nil {
+		hdlr.errorHandler = fn
+	}
 	tp := reflect.TypeOf(handler)
 
 	/*
