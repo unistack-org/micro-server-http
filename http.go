@@ -4,7 +4,6 @@ package http
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -26,6 +25,7 @@ import (
 type httpServer struct {
 	sync.RWMutex
 	opts        server.Options
+	handlers    map[string]server.Handler
 	hd          server.Handler
 	exit        chan chan error
 	subscribers map[*httpSubscriber][]broker.Subscriber
@@ -33,6 +33,8 @@ type httpServer struct {
 	registered bool
 	// register service instance
 	rsvc *register.Service
+
+	errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
 }
 
 func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
@@ -54,13 +56,30 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	for _, o := range opts {
 		o(&h.opts)
 	}
+	h.errorHandler = DefaultErrorHandler
+	if fn, ok := h.opts.Context.Value(errorHandlerKey{}).(func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)); ok && fn != nil {
+		h.errorHandler = fn
+	}
+
+	h.handlers = make(map[string]server.Handler)
 	h.Unlock()
 	return nil
 }
 
 func (h *httpServer) Handle(handler server.Handler) error {
 	h.Lock()
-	h.hd = handler
+	if hdlr, ok := handler.(*httpHandler); ok {
+		if h.handlers == nil {
+			h.handlers = make(map[string]server.Handler)
+		}
+		if _, ok := hdlr.hd.(http.Handler); ok {
+			h.hd = handler
+		} else {
+			h.handlers[handler.Name()] = handler
+		}
+	} else {
+		h.hd = handler
+	}
 	h.Unlock()
 	return nil
 }
@@ -86,10 +105,6 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 		sopts: h.opts,
 	}
 
-	hdlr.errorHandler = DefaultErrorHandler
-	if fn, ok := options.Context.Value(errorHandlerKey{}).(func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)); ok && fn != nil {
-		hdlr.errorHandler = fn
-	}
 	tp := reflect.TypeOf(handler)
 
 	/*
@@ -184,8 +199,11 @@ func (h *httpServer) Subscribe(sb server.Subscriber) error {
 }
 
 func (h *httpServer) Register() error {
+	var eps []*register.Endpoint
 	h.RLock()
-	eps := h.hd.Endpoints()
+	for _, hdlr := range h.handlers {
+		eps = append(eps, hdlr.Endpoints()...)
+	}
 	rsvc := h.rsvc
 	config := h.opts
 	h.RUnlock()
@@ -322,7 +340,6 @@ func (h *httpServer) Deregister() error {
 func (h *httpServer) Start() error {
 	h.RLock()
 	config := h.opts
-	hd := h.hd
 	h.RUnlock()
 
 	// micro: config.Transport.Listen(config.Address)
@@ -357,14 +374,16 @@ func (h *httpServer) Start() error {
 	h.opts.Address = ts.Addr().String()
 	h.Unlock()
 
-	handler, ok := hd.Handler().(http.Handler)
-	if !ok {
-		handler, ok = hd.(http.Handler)
+	var handler http.Handler
+	if h.hd == nil {
+		handler = h
+	} else if hdlr, ok := h.hd.Handler().(http.Handler); ok {
+		handler = hdlr
 	}
 
-	if !ok {
-		return errors.New("Server required http.Handler")
-	}
+	//if !ok {
+	//	return errors.New("Server required http.Handler")
+	//}
 
 	if err := config.Broker.Connect(h.opts.Context); err != nil {
 		return err
