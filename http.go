@@ -375,15 +375,32 @@ func (h *httpServer) Start() error {
 	h.Unlock()
 
 	var handler http.Handler
-	if h.hd == nil {
-		handler = h
-	} else if hdlr, ok := h.hd.Handler().(http.Handler); ok {
-		handler = hdlr
+	var srvFunc func(net.Listener) error
+
+	if h.opts.Context != nil {
+		if hs, ok := h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
+			if hs.Handler == nil && h.hd != nil {
+				if hdlr, ok := h.hd.Handler().(http.Handler); ok {
+					hs.Handler = hdlr
+					handler = hs.Handler
+				}
+			} else {
+				handler = hs.Handler
+			}
+		}
 	}
 
-	//if !ok {
-	//	return errors.New("Server required http.Handler")
-	//}
+	if handler == nil && h.hd == nil {
+		handler = h
+	} else if handler == nil && h.hd != nil {
+		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
+			handler = hdlr
+		}
+	}
+
+	if handler == nil {
+		return fmt.Errorf("cant process with nil handler")
+	}
 
 	if err := config.Broker.Connect(h.opts.Context); err != nil {
 		return err
@@ -400,7 +417,6 @@ func (h *httpServer) Start() error {
 	}
 
 	fn := handler
-	var srvFunc func(net.Listener) error
 
 	if h.opts.Context != nil {
 		if mwf, ok := h.opts.Context.Value(middlewareKey{}).([]func(http.Handler) http.Handler); ok && len(mwf) > 0 {

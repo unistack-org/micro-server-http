@@ -40,7 +40,6 @@ type httpHandler struct {
 	eps      []*register.Endpoint
 	hd       interface{}
 	handlers map[string][]patHandler
-	//errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
 }
 
 func (h *httpHandler) newCodec(ct string) (codec.Codec, error) {
@@ -74,6 +73,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/") {
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("path must contains /"), http.StatusBadRequest)
+		return
 	}
 
 	ct := DefaultContentType
@@ -84,6 +84,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cf, err := h.newCodec(ct)
 	if err != nil {
 		h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
+		return
 	}
 
 	components := strings.Split(path[1:], "/")
@@ -138,6 +139,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		umd, err := rflutil.URLMap(r.URL.RawQuery)
 		if err != nil {
 			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
+			return
 		}
 		for k, v := range umd {
 			matches[k] = v
@@ -168,6 +170,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
 		h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
+		return
 	}
 
 	matches = rflutil.FlattenMap(matches)
