@@ -64,3 +64,6 @@ type errorHandlerKey struct{}
 func ErrorHandler(fn func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)) server.Option {
 	return server.SetOption(errorHandlerKey{}, fn)
 }
+
+// type pathHandlerKey struct{}
+// PathHandler specifies http handler for path

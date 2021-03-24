@@ -32,8 +32,8 @@ type httpServer struct {
 	// used for first registration
 	registered bool
 	// register service instance
-	rsvc *register.Service
-
+	rsvc         *register.Service
+	init         bool
 	errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
 }
 
@@ -52,29 +52,61 @@ func (h *httpServer) Options() server.Options {
 }
 
 func (h *httpServer) Init(opts ...server.Option) error {
+	if len(opts) == 0 && h.init {
+		return nil
+	}
+
 	h.Lock()
 	for _, o := range opts {
 		o(&h.opts)
 	}
-	h.errorHandler = DefaultErrorHandler
 	if fn, ok := h.opts.Context.Value(errorHandlerKey{}).(func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)); ok && fn != nil {
 		h.errorHandler = fn
 	}
-
-	h.handlers = make(map[string]server.Handler)
+	if h.errorHandler == nil {
+		h.errorHandler = DefaultErrorHandler
+	}
+	if h.handlers == nil {
+		h.handlers = make(map[string]server.Handler)
+	}
 	h.Unlock()
+
+	if err := h.opts.Register.Init(); err != nil {
+		return err
+	}
+	if err := h.opts.Broker.Init(); err != nil {
+		return err
+	}
+	if err := h.opts.Tracer.Init(); err != nil {
+		return err
+	}
+	if err := h.opts.Auth.Init(); err != nil {
+		return err
+	}
+	if err := h.opts.Logger.Init(); err != nil {
+		return err
+	}
+	if err := h.opts.Meter.Init(); err != nil {
+		return err
+	}
+	if err := h.opts.Transport.Init(); err != nil {
+		return err
+	}
+
+	h.init = true
+
 	return nil
 }
 
 func (h *httpServer) Handle(handler server.Handler) error {
 	h.Lock()
 	if hdlr, ok := handler.(*httpHandler); ok {
-		if h.handlers == nil {
-			h.handlers = make(map[string]server.Handler)
-		}
 		if _, ok := hdlr.hd.(http.Handler); ok {
 			h.hd = handler
 		} else {
+			if h.handlers == nil {
+				h.handlers = make(map[string]server.Handler)
+			}
 			h.handlers[handler.Name()] = handler
 		}
 	} else {
