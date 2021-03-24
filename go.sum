@@ -11,6 +11,8 @@ github.com/unistack-org/micro/v3 v3.3.0/go.mod h1:iJwCWq2PECMxigfqe6TPC5GLWvj6P9
 golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4/go.mod h1:RBQZq4jEuRlivfhVLdyRGr576XBO4/greRjx4P4O3yc=
 golang.org/x/net v0.0.0-20210323141857-08027d57d8cf h1:sewfyKLWuY3ko6EI4hbFziQ8bHkfammpzCDfLT92I1c=
 golang.org/x/net v0.0.0-20210323141857-08027d57d8cf/go.mod h1:RBQZq4jEuRlivfhVLdyRGr576XBO4/greRjx4P4O3yc=
+golang.org/x/net v0.0.0-20210324051636-2c4c8ecb7826 h1:lNRDRnwZWawoPHDS50ebYHTOHjctRMLSrUSQFcAHiW4=
+golang.org/x/net v0.0.0-20210324051636-2c4c8ecb7826/go.mod h1:RBQZq4jEuRlivfhVLdyRGr576XBO4/greRjx4P4O3yc=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210315160823-c6e025ad8005/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
