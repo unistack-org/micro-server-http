@@ -247,7 +247,8 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if scode != 0 {
 		w.WriteHeader(scode)
 	} else {
-		handler.sopts.Logger.Warn(handler.sopts.Context, "response code not set in handler via SetRspCode(ctx, http.StatusXXX)")
+		//handler.sopts.Logger.Warn(handler.sopts.Context, "response code not set in handler via SetRspCode(ctx, http.StatusXXX)")
+		w.WriteHeader(200)
 	}
 	w.Write(b)
 }
