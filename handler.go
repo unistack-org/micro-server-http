@@ -81,7 +81,15 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ct = htype
 	}
 
-	cf, err := h.newCodec(ct)
+	var cf codec.Codec
+	var err error
+	switch ct {
+	case "application/x-www-form-urlencoded":
+		cf, err = h.newCodec(DefaultContentType)
+	default:
+		cf, err = h.newCodec(ct)
+	}
+
 	if err != nil {
 		h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
 		return
@@ -101,6 +109,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	matches := make(map[string]interface{})
+
 	var match bool
 	var hldr patHandler
 	var handler *httpHandler
@@ -134,9 +143,22 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		md.Set(k, strings.Join(v, ", "))
 	}
 
+	var query string
+	switch ct {
+	case "application/x-www-form-urlencoded":
+		buf, err := io.ReadAll(r.Body)
+		if err != nil {
+			h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
+			return
+		}
+		query = string(buf)
+	default:
+		query = r.URL.RawQuery
+	}
+
 	// get fields from url values
-	if len(r.URL.RawQuery) > 0 {
-		umd, err := rflutil.URLMap(r.URL.RawQuery)
+	if len(query) > 0 {
+		umd, err := rflutil.URLMap(query)
 		if err != nil {
 			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
 			return
@@ -168,9 +190,11 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//function := hldr.rcvr
 	var returnValues []reflect.Value
 
-	if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
-		h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
-		return
+	if ct != "application/x-www-form-urlencoded" {
+		if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
+			h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	matches = rflutil.FlattenMap(matches)
@@ -179,10 +203,13 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := cf.Marshal(argv.Interface())
-	if err != nil {
-		h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
-		return
+	var b []byte
+	if ct != "application/x-www-form-urlencoded" {
+		b, err = cf.Marshal(argv.Interface())
+		if err != nil {
+			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
+			return
+		}
 	}
 
 	hr := &rpcRequest{

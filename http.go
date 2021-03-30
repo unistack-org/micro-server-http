@@ -63,9 +63,6 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	if fn, ok := h.opts.Context.Value(errorHandlerKey{}).(func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)); ok && fn != nil {
 		h.errorHandler = fn
 	}
-	if h.errorHandler == nil {
-		h.errorHandler = DefaultErrorHandler
-	}
 	if h.handlers == nil {
 		h.handlers = make(map[string]server.Handler)
 	}
@@ -553,8 +550,9 @@ func (h *httpServer) Name() string {
 func NewServer(opts ...server.Option) server.Server {
 	options := server.NewOptions(opts...)
 	return &httpServer{
-		opts:        options,
-		exit:        make(chan chan error),
-		subscribers: make(map[*httpSubscriber][]broker.Subscriber),
+		opts:         options,
+		exit:         make(chan chan error),
+		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),
+		errorHandler: DefaultErrorHandler,
 	}
 }
