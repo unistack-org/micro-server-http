@@ -24,6 +24,8 @@ github.com/unistack-org/micro/v3 v3.3.10 h1:yMSiyplupFQ7xy/kNXL/zqSnqGSjrlNa2GTC
 github.com/unistack-org/micro/v3 v3.3.10/go.mod h1:5ragE2E8ER5d4FZQJG9pB6qdfOoLXLfKW89l77Dy3jQ=
 github.com/unistack-org/micro/v3 v3.3.11 h1:Jr0gAw5lLqgddiHKQeWUOUeP6ZqgRhz52EA9zJ5MJ3U=
 github.com/unistack-org/micro/v3 v3.3.11/go.mod h1:PPCt675o3HPcODFbJ4iRWPmQFAk1WQ+asQSOb/syq6U=
+github.com/unistack-org/micro/v3 v3.3.13 h1:y4bDDkbwnjgOckrhFkC6D/o42tr75X33UbrB+Ko0M68=
+github.com/unistack-org/micro/v3 v3.3.13/go.mod h1:98hNcMXp/WyWJwLwCuwrhN1Jm7aCWaRNsMfRjK8Fq+Y=
 golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4/go.mod h1:RBQZq4jEuRlivfhVLdyRGr576XBO4/greRjx4P4O3yc=
 golang.org/x/net v0.0.0-20210323141857-08027d57d8cf h1:sewfyKLWuY3ko6EI4hbFziQ8bHkfammpzCDfLT92I1c=
 golang.org/x/net v0.0.0-20210323141857-08027d57d8cf/go.mod h1:RBQZq4jEuRlivfhVLdyRGr576XBO4/greRjx4P4O3yc=
