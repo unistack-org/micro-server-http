@@ -143,22 +143,25 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		md.Set(k, strings.Join(v, ", "))
 	}
 
-	var query string
-	switch ct {
-	case "application/x-www-form-urlencoded":
+	// get fields from url values
+	if len(r.URL.RawQuery) > 0 {
+		umd, err := rflutil.URLMap(r.URL.RawQuery)
+		if err != nil {
+			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
+			return
+		}
+		for k, v := range umd {
+			matches[k] = v
+		}
+	}
+
+	if ct == "application/x-www-form-urlencoded" {
 		buf, err := io.ReadAll(r.Body)
 		if err != nil {
 			h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
 			return
 		}
-		query = string(buf)
-	default:
-		query = r.URL.RawQuery
-	}
-
-	// get fields from url values
-	if len(query) > 0 {
-		umd, err := rflutil.URLMap(query)
+		umd, err := rflutil.URLMap(string(buf))
 		if err != nil {
 			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
 			return
@@ -198,7 +201,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	matches = rflutil.FlattenMap(matches)
-	if err = rflutil.MergeMap(argv.Interface(), matches); err != nil {
+	if err = rflutil.Merge(argv.Interface(), matches, rflutil.SliceAppend(true), rflutil.Tags([]string{"protobuf", "json"})); err != nil {
 		h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
 		return
 	}
