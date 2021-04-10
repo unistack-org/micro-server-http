@@ -78,7 +78,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ct := DefaultContentType
 	if htype := r.Header.Get("Content-Type"); htype != "" {
-		ct = htype
+		ct = strings.Split(htype, ";")[0]
 	}
 
 	var cf codec.Codec
