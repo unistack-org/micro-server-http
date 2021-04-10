@@ -76,7 +76,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ct := DefaultContentType
+	ct := strings.Split(DefaultContentType, ";")[0]
 	if htype := r.Header.Get("Content-Type"); htype != "" {
 		ct = strings.Split(htype, ";")[0]
 	}
@@ -85,7 +85,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch ct {
 	case "application/x-www-form-urlencoded":
-		cf, err = h.newCodec(DefaultContentType)
+		cf, err = h.newCodec(strings.Split(DefaultContentType, ";")[0])
 	default:
 		cf, err = h.newCodec(ct)
 	}
