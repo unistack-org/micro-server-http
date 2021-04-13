@@ -84,3 +84,23 @@ func PathHandler(path string, h http.HandlerFunc) server.Option {
 		o.Context = context.WithValue(o.Context, pathHandlerKey{}, v)
 	}
 }
+
+type contentTypeHandlerKey struct{}
+type contentTypeHandlerVal struct {
+	h map[string]http.HandlerFunc
+}
+
+// ContentTypeHandler specifies http handler for Content-Type
+func ContentTypeHandler(ct string, h http.HandlerFunc) server.Option {
+	return func(o *server.Options) {
+		if o.Context == nil {
+			o.Context = context.Background()
+		}
+		v, ok := o.Context.Value(contentTypeHandlerKey{}).(*contentTypeHandlerVal)
+		if !ok {
+			v = &contentTypeHandlerVal{h: make(map[string]http.HandlerFunc)}
+		}
+		v.h[ct] = h
+		o.Context = context.WithValue(o.Context, contentTypeHandlerKey{}, v)
+	}
+}

@@ -33,10 +33,11 @@ type httpServer struct {
 	// used for first registration
 	registered bool
 	// register service instance
-	rsvc         *register.Service
-	init         bool
-	errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
-	pathHandlers map[*regexp.Regexp]http.HandlerFunc
+	rsvc                *register.Service
+	init                bool
+	errorHandler        func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
+	pathHandlers        map[*regexp.Regexp]http.HandlerFunc
+	contentTypeHandlers map[string]http.HandlerFunc
 }
 
 func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
@@ -73,6 +74,9 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	if h.pathHandlers == nil {
 		h.pathHandlers = make(map[*regexp.Regexp]http.HandlerFunc)
 	}
+	if h.contentTypeHandlers == nil {
+		h.contentTypeHandlers = make(map[string]http.HandlerFunc)
+	}
 	if phs, ok := h.opts.Context.Value(pathHandlerKey{}).(*pathHandlerVal); ok && phs.h != nil {
 		for pp, ph := range phs.h {
 			exp, err := regexp.Compile(pp)
@@ -82,6 +86,12 @@ func (h *httpServer) Init(opts ...server.Option) error {
 			h.pathHandlers[exp] = ph
 		}
 	}
+	if phs, ok := h.opts.Context.Value(contentTypeHandlerKey{}).(*contentTypeHandlerVal); ok && phs.h != nil {
+		for pp, ph := range phs.h {
+			h.contentTypeHandlers[pp] = ph
+		}
+	}
+
 	if err := h.opts.Register.Init(); err != nil {
 		return err
 	}

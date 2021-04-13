@@ -74,6 +74,16 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ct := DefaultContentType
+	if htype := r.Header.Get("Content-Type"); htype != "" {
+		ct = htype
+	}
+
+	if ph, ok := h.contentTypeHandlers[strings.Split(ct, ";")[0]]; ok {
+		ph(w, r)
+		return
+	}
+
 	ctx := metadata.NewContext(r.Context(), nil)
 
 	defer r.Body.Close()
@@ -82,11 +92,6 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(path, "/") {
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("path must contains /"), http.StatusBadRequest)
 		return
-	}
-
-	ct := DefaultContentType
-	if htype := r.Header.Get("Content-Type"); htype != "" {
-		ct = htype
 	}
 
 	var cf codec.Codec
