@@ -66,6 +66,14 @@ func (h *httpHandler) Options() server.HandlerOptions {
 }
 
 func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	for exp, ph := range h.pathHandlers {
+		if exp.MatchString(r.URL.String()) {
+			ph(w, r)
+			return
+		}
+	}
+
 	ctx := metadata.NewContext(r.Context(), nil)
 
 	defer r.Body.Close()
@@ -76,9 +84,9 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ct := strings.Split(DefaultContentType, ";")[0]
+	ct := DefaultContentType
 	if htype := r.Header.Get("Content-Type"); htype != "" {
-		ct = strings.Split(htype, ";")[0]
+		ct = htype
 	}
 
 	var cf codec.Codec
@@ -87,7 +95,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "application/x-www-form-urlencoded":
 		cf, err = h.newCodec(strings.Split(DefaultContentType, ";")[0])
 	default:
-		cf, err = h.newCodec(ct)
+		cf, err = h.newCodec(strings.Split(ct, ";")[0])
 	}
 
 	if err != nil {

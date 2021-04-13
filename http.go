@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -35,6 +36,7 @@ type httpServer struct {
 	rsvc         *register.Service
 	init         bool
 	errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
+	pathHandlers map[*regexp.Regexp]http.HandlerFunc
 }
 
 func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
@@ -57,6 +59,8 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	}
 
 	h.Lock()
+	defer h.Unlock()
+
 	for _, o := range opts {
 		o(&h.opts)
 	}
@@ -66,8 +70,18 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	if h.handlers == nil {
 		h.handlers = make(map[string]server.Handler)
 	}
-	h.Unlock()
-
+	if h.pathHandlers == nil {
+		h.pathHandlers = make(map[*regexp.Regexp]http.HandlerFunc)
+	}
+	if phs, ok := h.opts.Context.Value(pathHandlerKey{}).(*pathHandlerVal); ok && phs.h != nil {
+		for pp, ph := range phs.h {
+			exp, err := regexp.Compile(pp)
+			if err != nil {
+				return err
+			}
+			h.pathHandlers[exp] = ph
+		}
+	}
 	if err := h.opts.Register.Init(); err != nil {
 		return err
 	}
@@ -554,5 +568,6 @@ func NewServer(opts ...server.Option) server.Server {
 		exit:         make(chan chan error),
 		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),
 		errorHandler: DefaultErrorHandler,
+		pathHandlers: make(map[*regexp.Regexp]http.HandlerFunc),
 	}
 }

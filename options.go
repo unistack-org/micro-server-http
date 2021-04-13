@@ -65,5 +65,22 @@ func ErrorHandler(fn func(ctx context.Context, s server.Handler, w http.Response
 	return server.SetOption(errorHandlerKey{}, fn)
 }
 
-// type pathHandlerKey struct{}
-// PathHandler specifies http handler for path
+type pathHandlerKey struct{}
+type pathHandlerVal struct {
+	h map[string]http.HandlerFunc
+}
+
+// PathHandler specifies http handler for path regexp
+func PathHandler(path string, h http.HandlerFunc) server.Option {
+	return func(o *server.Options) {
+		if o.Context == nil {
+			o.Context = context.Background()
+		}
+		v, ok := o.Context.Value(pathHandlerKey{}).(*pathHandlerVal)
+		if !ok {
+			v = &pathHandlerVal{h: make(map[string]http.HandlerFunc)}
+		}
+		v.h[path] = h
+		o.Context = context.WithValue(o.Context, pathHandlerKey{}, v)
+	}
+}
