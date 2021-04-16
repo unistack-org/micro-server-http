@@ -41,6 +41,13 @@ type httpServer struct {
 }
 
 func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
+	h.RLock()
+	defer h.RUnlock()
+
+	if idx := strings.IndexRune(ct, ';'); idx >= 0 {
+		ct = ct[:idx]
+	}
+
 	if cf, ok := h.opts.Codecs[ct]; ok {
 		return cf, nil
 	}

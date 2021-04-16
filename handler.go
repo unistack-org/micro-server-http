@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/unistack-org/micro/v3/codec"
 	"github.com/unistack-org/micro/v3/errors"
@@ -40,9 +41,17 @@ type httpHandler struct {
 	eps      []*register.Endpoint
 	hd       interface{}
 	handlers map[string][]patHandler
+	sync.RWMutex
 }
 
 func (h *httpHandler) newCodec(ct string) (codec.Codec, error) {
+	h.RLock()
+	defer h.RUnlock()
+
+	if idx := strings.IndexRune(ct, ';'); idx >= 0 {
+		ct = ct[:idx]
+	}
+
 	if cf, ok := h.sopts.Codecs[ct]; ok {
 		return cf, nil
 	}
@@ -98,9 +107,9 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch ct {
 	case "application/x-www-form-urlencoded":
-		cf, err = h.newCodec(strings.Split(DefaultContentType, ";")[0])
+		cf, err = h.newCodec(DefaultContentType)
 	default:
-		cf, err = h.newCodec(strings.Split(ct, ";")[0])
+		cf, err = h.newCodec(ct)
 	}
 
 	if err != nil {
