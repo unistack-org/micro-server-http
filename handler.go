@@ -88,9 +88,11 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ct = htype
 	}
 
-	if ph, ok := h.contentTypeHandlers[strings.Split(ct, ";")[0]]; ok {
-		ph(w, r)
-		return
+	if idx := strings.Index(ct, ":"); idx > 0 {
+		if ph, ok := h.contentTypeHandlers[ct[:idx]]; ok {
+			ph(w, r)
+			return
+		}
 	}
 
 	ctx := metadata.NewContext(r.Context(), nil)
@@ -103,15 +105,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var cf codec.Codec
-	var err error
-	switch ct {
-	case "application/x-www-form-urlencoded":
-		cf, err = h.newCodec(DefaultContentType)
-	default:
-		cf, err = h.newCodec(ct)
-	}
-
+	cf, err := h.newCodec(ct)
 	if err != nil {
 		h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
 		return
@@ -177,22 +171,6 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if ct == "application/x-www-form-urlencoded" {
-		buf, err := io.ReadAll(r.Body)
-		if err != nil {
-			h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
-			return
-		}
-		umd, err := rflutil.URLMap(string(buf))
-		if err != nil {
-			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
-			return
-		}
-		for k, v := range umd {
-			matches[k] = v
-		}
-	}
-
 	var argv, replyv reflect.Value
 
 	// Decode the argument value.
@@ -215,11 +193,9 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//function := hldr.rcvr
 	var returnValues []reflect.Value
 
-	if ct != "application/x-www-form-urlencoded" {
-		if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
-			h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
-			return
-		}
+	if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
+		h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
+		return
 	}
 
 	matches = rflutil.FlattenMap(matches)
@@ -228,13 +204,10 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var b []byte
-	if ct != "application/x-www-form-urlencoded" {
-		b, err = cf.Marshal(argv.Interface())
-		if err != nil {
-			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
-			return
-		}
+	b, err := cf.Marshal(argv.Interface())
+	if err != nil {
+		h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
+		return
 	}
 
 	hr := &rpcRequest{
@@ -269,6 +242,14 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// wrap the handler func
 	for i := len(handler.sopts.HdlrWrappers); i > 0; i-- {
 		fn = handler.sopts.HdlrWrappers[i-1](fn)
+	}
+
+	if ct == "application/x-www-form-urlencoded" {
+		cf, err = h.newCodec(DefaultContentType)
+		if err != nil {
+			h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if appErr := fn(ctx, hr, replyv.Interface()); appErr != nil {
