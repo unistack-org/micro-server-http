@@ -250,6 +250,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
 			return
 		}
+		ct = DefaultContentType
 	}
 
 	if appErr := fn(ctx, hr, replyv.Interface()); appErr != nil {
