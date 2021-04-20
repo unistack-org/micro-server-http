@@ -147,15 +147,12 @@ func (h *httpServer) Handle(handler server.Handler) error {
 func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOption) server.Handler {
 	options := server.NewHandlerOptions(opts...)
 
-	var eps []*register.Endpoint
-
-	if !options.Internal {
-		for name, metadata := range options.Metadata {
-			eps = append(eps, &register.Endpoint{
-				Name:     name,
-				Metadata: metadata,
-			})
-		}
+	eps := make([]*register.Endpoint, 0, len(options.Metadata))
+	for name, metadata := range options.Metadata {
+		eps = append(eps, &register.Endpoint{
+			Name:     name,
+			Metadata: metadata,
+		})
 	}
 
 	hdlr := &httpHandler{
@@ -287,9 +284,7 @@ func (h *httpServer) Register() error {
 	var subscriberList []*httpSubscriber
 	for e := range h.subscribers {
 		// Only advertise non internal subscribers
-		if !e.Options().Internal {
-			subscriberList = append(subscriberList, e)
-		}
+		subscriberList = append(subscriberList, e)
 	}
 	sort.Slice(subscriberList, func(i, j int) bool {
 		return subscriberList[i].topic > subscriberList[j].topic
