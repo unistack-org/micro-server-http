@@ -21,9 +21,9 @@ const (
 var typeOfError = reflect.TypeOf((*error)(nil)).Elem()
 
 type handler struct {
-	method  reflect.Value
 	reqType reflect.Type
 	ctxType reflect.Type
+	method  reflect.Value
 }
 
 type httpSubscriber struct {

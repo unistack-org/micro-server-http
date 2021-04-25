@@ -9,25 +9,25 @@ import (
 
 type rpcRequest struct {
 	rw          io.ReadWriter
-	service     string
-	method      string
-	endpoint    string
-	target      string
-	contentType string
+	payload     interface{}
 	codec       codec.Codec
 	header      metadata.Metadata
+	method      string
+	endpoint    string
+	contentType string
+	service     string
+	target      string
 	body        []byte
 	stream      bool
-	payload     interface{}
 }
 
 type rpcMessage struct {
+	payload     interface{}
+	codec       codec.Codec
+	header      metadata.Metadata
 	topic       string
 	contentType string
-	payload     interface{}
-	header      metadata.Metadata
 	body        []byte
-	codec       codec.Codec
 }
 
 func (r *rpcRequest) ContentType() string {

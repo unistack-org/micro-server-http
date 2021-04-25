@@ -24,20 +24,18 @@ import (
 )
 
 type httpServer struct {
-	sync.RWMutex
-	opts        server.Options
-	handlers    map[string]server.Handler
-	hd          server.Handler
-	exit        chan chan error
-	subscribers map[*httpSubscriber][]broker.Subscriber
-	// used for first registration
-	registered bool
-	// register service instance
+	hd                  server.Handler
 	rsvc                *register.Service
-	init                bool
+	handlers            map[string]server.Handler
+	exit                chan chan error
+	subscribers         map[*httpSubscriber][]broker.Subscriber
 	errorHandler        func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
 	pathHandlers        map[*regexp.Regexp]http.HandlerFunc
 	contentTypeHandlers map[string]http.HandlerFunc
+	opts                server.Options
+	sync.RWMutex
+	registered bool
+	init       bool
 }
 
 func (h *httpServer) newCodec(ct string) (codec.Codec, error) {

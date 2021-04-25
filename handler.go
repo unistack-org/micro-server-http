@@ -28,19 +28,19 @@ var (
 )
 
 type patHandler struct {
-	pat   rutil.Pattern
 	mtype *methodType
-	name  string
 	rcvr  reflect.Value
+	name  string
+	pat   rutil.Pattern
 }
 
 type httpHandler struct {
-	name     string
 	opts     server.HandlerOptions
-	sopts    server.Options
-	eps      []*register.Endpoint
 	hd       interface{}
 	handlers map[string][]patHandler
+	name     string
+	eps      []*register.Endpoint
+	sopts    server.Options
 	sync.RWMutex
 }
 

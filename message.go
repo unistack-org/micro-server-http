@@ -6,12 +6,12 @@ import (
 )
 
 type httpMessage struct {
-	topic       string
 	payload     interface{}
-	contentType string
-	header      metadata.Metadata
-	body        []byte
 	codec       codec.Codec
+	header      metadata.Metadata
+	topic       string
+	contentType string
+	body        []byte
 }
 
 func (r *httpMessage) Topic() string {

@@ -11,10 +11,10 @@ import (
 )
 
 type methodType struct {
-	method      reflect.Method
 	ArgType     reflect.Type
 	ReplyType   reflect.Type
 	ContextType reflect.Type
+	method      reflect.Method
 	stream      bool
 }
 
