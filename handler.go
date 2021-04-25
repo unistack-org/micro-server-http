@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/unistack-org/micro/v3/codec"
 	"github.com/unistack-org/micro/v3/errors"
 	"github.com/unistack-org/micro/v3/logger"
 	"github.com/unistack-org/micro/v3/metadata"
@@ -22,7 +21,9 @@ import (
 var (
 	DefaultErrorHandler = func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int) {
 		w.WriteHeader(status)
-		w.Write([]byte(err.Error()))
+		if _, cerr := w.Write([]byte(err.Error())); cerr != nil {
+			logger.DefaultLogger.Errorf(ctx, "write failed: %v", cerr)
+		}
 	}
 	DefaultContentType = "application/json"
 )
@@ -44,20 +45,6 @@ type httpHandler struct {
 	sync.RWMutex
 }
 
-func (h *httpHandler) newCodec(ct string) (codec.Codec, error) {
-	h.RLock()
-	defer h.RUnlock()
-
-	if idx := strings.IndexRune(ct, ';'); idx >= 0 {
-		ct = ct[:idx]
-	}
-
-	if cf, ok := h.sopts.Codecs[ct]; ok {
-		return cf, nil
-	}
-	return nil, codec.ErrUnknownContentType
-}
-
 func (h *httpHandler) Name() string {
 	return h.name
 }
@@ -75,7 +62,6 @@ func (h *httpHandler) Options() server.HandlerOptions {
 }
 
 func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
 	for exp, ph := range h.pathHandlers {
 		if exp.MatchString(r.URL.String()) {
 			ph(w, r)
@@ -95,7 +81,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ctx := metadata.NewContext(r.Context(), nil)
+	ctx := metadata.NewIncomingContext(r.Context(), nil)
 
 	defer r.Body.Close()
 
@@ -132,8 +118,8 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, hpat := range h.handlers {
 		handlertmp := hpat.(*httpHandler)
 		for _, hldrtmp := range handlertmp.handlers[r.Method] {
-			mp, err := hldrtmp.pat.Match(components, verb)
-			if err == nil {
+			mp, merr := hldrtmp.pat.Match(components, verb)
+			if merr == nil {
 				match = true
 				for k, v := range mp {
 					matches[k] = v
@@ -161,9 +147,9 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// get fields from url values
 	if len(r.URL.RawQuery) > 0 {
-		umd, err := rflutil.URLMap(r.URL.RawQuery)
-		if err != nil {
-			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
+		umd, cerr := rflutil.URLMap(r.URL.RawQuery)
+		if cerr != nil {
+			h.errorHandler(ctx, handler, w, r, cerr, http.StatusBadRequest)
 			return
 		}
 		for k, v := range umd {
@@ -190,7 +176,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	replyv = reflect.New(hldr.mtype.ReplyType.Elem())
 
 	function := hldr.mtype.method.Func
-	//function := hldr.rcvr
+	// function := hldr.rcvr
 	var returnValues []reflect.Value
 
 	if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
@@ -281,8 +267,10 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if scode != 0 {
 		w.WriteHeader(scode)
 	} else {
-		//handler.sopts.Logger.Warn(handler.sopts.Context, "response code not set in handler via SetRspCode(ctx, http.StatusXXX)")
+		// handler.sopts.Logger.Warn(handler.sopts.Context, "response code not set in handler via SetRspCode(ctx, http.StatusXXX)")
 		w.WriteHeader(200)
 	}
-	w.Write(b)
+	if _, cerr := w.Write(b); cerr != nil {
+		logger.DefaultLogger.Errorf(ctx, "write failed: %v", cerr)
+	}
 }

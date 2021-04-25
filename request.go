@@ -5,6 +5,12 @@ import (
 
 	"github.com/unistack-org/micro/v3/codec"
 	"github.com/unistack-org/micro/v3/metadata"
+	"github.com/unistack-org/micro/v3/server"
+)
+
+var (
+	_ server.Request = &rpcRequest{}
+	_ server.Message = &rpcMessage{}
 )
 
 type rpcRequest struct {
@@ -16,7 +22,6 @@ type rpcRequest struct {
 	endpoint    string
 	contentType string
 	service     string
-	target      string
 	body        []byte
 	stream      bool
 }
@@ -43,7 +48,7 @@ func (r *rpcRequest) Method() string {
 }
 
 func (r *rpcRequest) Endpoint() string {
-	return r.method
+	return r.endpoint
 }
 
 func (r *rpcRequest) Codec() codec.Codec {

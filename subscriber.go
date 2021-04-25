@@ -14,10 +14,6 @@ import (
 	"github.com/unistack-org/micro/v3/server"
 )
 
-const (
-	subSig = "func(context.Context, interface{}) error"
-)
-
 var typeOfError = reflect.TypeOf((*error)(nil)).Elem()
 
 type handler struct {
@@ -116,7 +112,7 @@ func (s *httpServer) createSubHandler(sb *httpSubscriber, opts server.Options) b
 
 		hdr := metadata.Copy(msg.Header)
 		delete(hdr, "Content-Type")
-		ctx := metadata.NewContext(context.Background(), hdr)
+		ctx := metadata.NewIncomingContext(context.Background(), hdr)
 
 		results := make(chan error, len(sb.handlers))
 

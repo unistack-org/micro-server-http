@@ -62,15 +62,14 @@ func prepareEndpoint(method reflect.Method) (*methodType, error) {
 		return nil, fmt.Errorf("method %v of %v has wrong number of ins: %v", mname, mtype, mtype.NumIn())
 	}
 
-	if stream {
+	switch stream {
+	case true:
 		// check stream type
 		streamType := reflect.TypeOf((*server.Stream)(nil)).Elem()
 		if !argType.Implements(streamType) {
 			return nil, fmt.Errorf("%v argument does not implement Streamer interface: %v", mname, argType)
 		}
-	} else {
-		// if not stream check the replyType
-
+	default:
 		// First arg need not be a pointer.
 		if !isExportedOrBuiltinType(argType) {
 			return nil, fmt.Errorf("%v argument type not exported: %v", mname, argType)

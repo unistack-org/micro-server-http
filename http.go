@@ -126,19 +126,23 @@ func (h *httpServer) Init(opts ...server.Option) error {
 
 func (h *httpServer) Handle(handler server.Handler) error {
 	h.Lock()
-	if hdlr, ok := handler.(*httpHandler); ok {
-		if _, ok := hdlr.hd.(http.Handler); ok {
-			h.hd = handler
-		} else {
-			if h.handlers == nil {
-				h.handlers = make(map[string]server.Handler)
-			}
-			h.handlers[handler.Name()] = handler
-		}
-	} else {
+	defer h.Unlock()
+	hdlr, ok := handler.(*httpHandler)
+	if !ok {
 		h.hd = handler
+		return nil
 	}
-	h.Unlock()
+
+	if _, ok := hdlr.hd.(http.Handler); ok {
+		h.hd = handler
+		return nil
+	}
+
+	if h.handlers == nil {
+		h.handlers = make(map[string]server.Handler)
+	}
+	h.handlers[handler.Name()] = handler
+
 	return nil
 }
 
@@ -279,7 +283,7 @@ func (h *httpServer) Register() error {
 	service.Endpoints = eps
 
 	h.Lock()
-	var subscriberList []*httpSubscriber
+	subscriberList := make([]*httpSubscriber, 0, len(h.subscribers))
 	for e := range h.subscribers {
 		// Only advertise non internal subscribers
 		subscriberList = append(subscriberList, e)
@@ -430,6 +434,7 @@ func (h *httpServer) Start() error {
 	var handler http.Handler
 	var srvFunc func(net.Listener) error
 
+	// nolint: nestif
 	if h.opts.Context != nil {
 		if hs, ok := h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
 			if hs.Handler == nil && h.hd != nil {
@@ -485,9 +490,17 @@ func (h *httpServer) Start() error {
 	}
 
 	if srvFunc != nil {
-		go srvFunc(ts)
+		go func() {
+			if cerr := srvFunc(ts); cerr != nil {
+				h.opts.Logger.Error(h.opts.Context, cerr)
+			}
+		}()
 	} else {
-		go http.Serve(ts, fn)
+		go func() {
+			if cerr := http.Serve(ts, fn); cerr != nil {
+				h.opts.Logger.Error(h.opts.Context, cerr)
+			}
+		}()
 	}
 
 	go func() {
@@ -511,6 +524,7 @@ func (h *httpServer) Start() error {
 				registered := h.registered
 				h.RUnlock()
 				rerr := config.RegisterCheck(h.opts.Context)
+				// nolint: nestif
 				if rerr != nil && registered {
 					if config.Logger.V(logger.ErrorLevel) {
 						config.Logger.Errorf(config.Context, "Server %s-%s register check error: %s, deregister it", config.Name, config.Id, rerr)

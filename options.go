@@ -8,11 +8,6 @@ import (
 	"github.com/unistack-org/micro/v3/server"
 )
 
-type rspCodeKey struct{}
-type rspCodeVal struct {
-	code int
-}
-
 // SetError pass error to caller
 func SetError(err interface{}) error {
 	return &Error{err: err}
@@ -27,6 +22,13 @@ type Error struct {
 func (err *Error) Error() string {
 	return fmt.Sprintf("%v", err.err)
 }
+
+type (
+	rspCodeKey struct{}
+	rspCodeVal struct {
+		code int
+	}
+)
 
 // SetRspCode saves response code in context, must be used by handler to specify http code
 func SetRspCode(ctx context.Context, code int) {
@@ -65,10 +67,12 @@ func ErrorHandler(fn func(ctx context.Context, s server.Handler, w http.Response
 	return server.SetOption(errorHandlerKey{}, fn)
 }
 
-type pathHandlerKey struct{}
-type pathHandlerVal struct {
-	h map[string]http.HandlerFunc
-}
+type (
+	pathHandlerKey struct{}
+	pathHandlerVal struct {
+		h map[string]http.HandlerFunc
+	}
+)
 
 // PathHandler specifies http handler for path regexp
 func PathHandler(path string, h http.HandlerFunc) server.Option {
@@ -85,10 +89,12 @@ func PathHandler(path string, h http.HandlerFunc) server.Option {
 	}
 }
 
-type contentTypeHandlerKey struct{}
-type contentTypeHandlerVal struct {
-	h map[string]http.HandlerFunc
-}
+type (
+	contentTypeHandlerKey struct{}
+	contentTypeHandlerVal struct {
+		h map[string]http.HandlerFunc
+	}
+)
 
 // ContentTypeHandler specifies http handler for Content-Type
 func ContentTypeHandler(ct string, h http.HandlerFunc) server.Option {
