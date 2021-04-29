@@ -81,7 +81,15 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ctx := metadata.NewIncomingContext(r.Context(), nil)
+	ctx := context.WithValue(r.Context(), rspCodeKey{}, &rspCodeVal{})
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		md = metadata.New(len(r.Header))
+	}
+	for k, v := range r.Header {
+		md.Set(k, strings.Join(v, ", "))
+	}
+	ctx = metadata.NewIncomingContext(ctx, md)
 
 	defer r.Body.Close()
 
@@ -134,15 +142,6 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !match {
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusNotFound)
 		return
-	}
-
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		md = metadata.New(0)
-	}
-
-	for k, v := range r.Header {
-		md.Set(k, strings.Join(v, ", "))
 	}
 
 	// get fields from url values
@@ -203,13 +202,12 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		method:      fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name),
 		body:        b,
 		payload:     argv.Interface(),
+		header:      md,
 	}
 
 	var scode int
 	// define the handler func
 	fn := func(fctx context.Context, req server.Request, rsp interface{}) (err error) {
-		fctx = context.WithValue(fctx, rspCodeKey{}, &rspCodeVal{})
-		fctx = metadata.NewIncomingContext(fctx, md)
 		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(fctx), reflect.ValueOf(argv.Interface()), reflect.ValueOf(rsp)})
 
 		scode = GetRspCode(fctx)
