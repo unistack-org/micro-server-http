@@ -205,20 +205,25 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		header:      md,
 	}
 
-	var scode int
 	// define the handler func
 	fn := func(fctx context.Context, req server.Request, rsp interface{}) (err error) {
 		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(fctx), reflect.ValueOf(argv.Interface()), reflect.ValueOf(rsp)})
 
-		scode = GetRspCode(fctx)
 		// The return value for the method is an error.
 		if rerr := returnValues[0].Interface(); rerr != nil {
 			err = rerr.(error)
 		}
 
-		if md, ok := metadata.FromOutgoingContext(fctx); ok {
-			metadata.SetOutgoingContext(ctx, md)
+		md, ok := metadata.FromOutgoingContext(ctx)
+		if !ok {
+			md = metadata.New(0)
 		}
+		if nmd, ok := metadata.FromOutgoingContext(fctx); ok {
+			for k, v := range nmd {
+				md.Set(k, v)
+			}
+		}
+		metadata.SetOutgoingContext(ctx, md)
 
 		return err
 	}
@@ -237,6 +242,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ct = DefaultContentType
 	}
 
+	scode := int(200)
 	if appErr := fn(ctx, hr, replyv.Interface()); appErr != nil {
 		switch verr := appErr.(type) {
 		case *errors.Error:
@@ -262,12 +268,12 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("content-Type", ct)
-	if scode != 0 {
-		w.WriteHeader(scode)
-	} else {
-		// handler.sopts.Logger.Warn(handler.sopts.Context, "response code not set in handler via SetRspCode(ctx, http.StatusXXX)")
-		w.WriteHeader(200)
+
+	if nscode := GetRspCode(ctx); nscode != 0 {
+		scode = nscode
 	}
+	w.WriteHeader(scode)
+
 	if _, cerr := w.Write(b); cerr != nil {
 		logger.DefaultLogger.Errorf(ctx, "write failed: %v", cerr)
 	}
