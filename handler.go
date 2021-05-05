@@ -261,13 +261,13 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", ct)
+
 	if md, ok := metadata.FromOutgoingContext(ctx); ok {
 		for k, v := range md {
 			w.Header().Set(k, v)
 		}
 	}
-
-	w.Header().Set("content-Type", ct)
 
 	if nscode := GetRspCode(ctx); nscode != 0 {
 		scode = nscode
