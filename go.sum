@@ -9,8 +9,8 @@ github.com/silas/dag v0.0.0-20210121180416-41cf55125c34/go.mod h1:7RTUFBdIRC9nZ7
 github.com/unistack-org/micro/v3 v3.3.17 h1:WcyS7InP0DlS/JpRQGLh5sG6VstkdHJbgpMp+gmHmwg=
 github.com/unistack-org/micro/v3 v3.3.17/go.mod h1:022EOEZZ789hZY3yB5ZSMXU6jLiadBgcNB/cpediV3c=
 golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6/go.mod h1:OJAsFXCWl8Ukc7SiCT/9KSuxbyM7479/AVlXFRxuMCk=
-golang.org/x/net v0.0.0-20210510095157-81045d8b478c h1:auYr+bcPU8Mq/TL1nUG7izfMhruPLrBE3bhBhJw5GY8=
-golang.org/x/net v0.0.0-20210510095157-81045d8b478c/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
+golang.org/x/net v0.0.0-20210510120150-4163338589ed h1:p9UgmWI9wKpfYmgaV/IZKGdXc5qEK45tDwwwDyjS26I=
+golang.org/x/net v0.0.0-20210510120150-4163338589ed/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210423082822-04245dca01da/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
