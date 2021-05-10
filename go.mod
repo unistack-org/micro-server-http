@@ -4,5 +4,5 @@ go 1.16
 
 require (
 	github.com/unistack-org/micro/v3 v3.3.17
-	golang.org/x/net v0.0.0-20210508051633-16afe75a6701
+	golang.org/x/net v0.0.0-20210510095157-81045d8b478c
 )
