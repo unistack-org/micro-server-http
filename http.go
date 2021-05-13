@@ -556,8 +556,6 @@ func (h *httpServer) Start() error {
 			}
 		}
 
-		ch <- ts.Close()
-
 		// deregister
 		if err := h.Deregister(); err != nil {
 			config.Logger.Errorf(config.Context, "Server deregister error: %s", err)
@@ -566,6 +564,9 @@ func (h *httpServer) Start() error {
 		if err := config.Broker.Disconnect(config.Context); err != nil {
 			config.Logger.Errorf(config.Context, "Broker disconnect error: %s", err)
 		}
+
+		ch <- ts.Close()
+
 	}()
 
 	return nil
