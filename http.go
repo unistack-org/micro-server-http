@@ -566,7 +566,6 @@ func (h *httpServer) Start() error {
 		}
 
 		ch <- ts.Close()
-
 	}()
 
 	return nil
