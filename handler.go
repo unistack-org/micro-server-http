@@ -251,8 +251,8 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(k, v)
 		}
 	}
-	if ct != w.Header().Get("Content-Type") {
-		if cf, err = h.newCodec(ct); err != nil {
+	if nct := w.Header().Get("Content-Type"); nct != ct {
+		if cf, err = h.newCodec(nct); err != nil {
 			h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
 			return
 		}
