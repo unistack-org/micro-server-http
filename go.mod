@@ -3,6 +3,6 @@ module github.com/unistack-org/micro-server-http/v3
 go 1.16
 
 require (
-	github.com/unistack-org/micro/v3 v3.3.17
-	golang.org/x/net v0.0.0-20210510120150-4163338589ed
+	github.com/unistack-org/micro/v3 v3.4.7
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 )
