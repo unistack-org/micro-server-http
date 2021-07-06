@@ -39,14 +39,13 @@ type httpServer struct {
 }
 
 func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
-	h.RLock()
-	defer h.RUnlock()
-
 	if idx := strings.IndexRune(ct, ';'); idx >= 0 {
 		ct = ct[:idx]
 	}
-
-	if cf, ok := h.opts.Codecs[ct]; ok {
+	h.RLock()
+	cf, ok := h.opts.Codecs[ct]
+	h.RUnlock()
+	if ok {
 		return cf, nil
 	}
 	return nil, codec.ErrUnknownContentType
@@ -65,7 +64,6 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	}
 
 	h.Lock()
-	defer h.Unlock()
 
 	for _, o := range opts {
 		o(&h.opts)
@@ -86,6 +84,7 @@ func (h *httpServer) Init(opts ...server.Option) error {
 		for pp, ph := range phs.h {
 			exp, err := regexp.Compile(pp)
 			if err != nil {
+				h.Unlock()
 				return err
 			}
 			h.pathHandlers[exp] = ph
@@ -96,52 +95,68 @@ func (h *httpServer) Init(opts ...server.Option) error {
 			h.contentTypeHandlers[pp] = ph
 		}
 	}
+	h.Unlock()
 
+	h.RLock()
 	if err := h.opts.Register.Init(); err != nil {
+		h.RUnlock()
 		return err
 	}
 	if err := h.opts.Broker.Init(); err != nil {
+		h.RUnlock()
 		return err
 	}
 	if err := h.opts.Tracer.Init(); err != nil {
+		h.RUnlock()
 		return err
 	}
 	if err := h.opts.Auth.Init(); err != nil {
+		h.RUnlock()
 		return err
 	}
 	if err := h.opts.Logger.Init(); err != nil {
+		h.RUnlock()
 		return err
 	}
 	if err := h.opts.Meter.Init(); err != nil {
+		h.RUnlock()
 		return err
 	}
 	if err := h.opts.Transport.Init(); err != nil {
+		h.RUnlock()
 		return err
 	}
+	h.RUnlock()
 
+	h.Lock()
 	h.init = true
+	h.Unlock()
 
 	return nil
 }
 
 func (h *httpServer) Handle(handler server.Handler) error {
-	h.Lock()
-	defer h.Unlock()
 	hdlr, ok := handler.(*httpHandler)
 	if !ok {
+		h.Lock()
 		h.hd = handler
+		h.Unlock()
 		return nil
 	}
 
 	if _, ok := hdlr.hd.(http.Handler); ok {
+		h.Lock()
 		h.hd = handler
+		h.Unlock()
 		return nil
 	}
 
+	h.Lock()
 	if h.handlers == nil {
 		h.handlers = make(map[string]server.Handler)
 	}
 	h.handlers[handler.Name()] = handler
+	h.Unlock()
 
 	return nil
 }
@@ -247,13 +262,15 @@ func (h *httpServer) Subscribe(sb server.Subscriber) error {
 		return err
 	}
 
-	h.Lock()
-	defer h.Unlock()
+	h.RLock()
 	_, ok = h.subscribers[sub]
+	h.RUnlock()
 	if ok {
 		return fmt.Errorf("subscriber %v already exists", h)
 	}
+	h.Lock()
 	h.subscribers[sub] = nil
+	h.Unlock()
 	return nil
 }
 
@@ -318,8 +335,6 @@ func (h *httpServer) Register() error {
 	}
 
 	h.Lock()
-	defer h.Unlock()
-
 	for sb := range h.subscribers {
 		handler := h.createSubHandler(sb, config)
 		var opts []broker.SubscribeOption
@@ -336,6 +351,7 @@ func (h *httpServer) Register() error {
 
 		sub, err := config.Broker.Subscribe(subCtx, sb.Topic(), handler, opts...)
 		if err != nil {
+			h.Unlock()
 			return err
 		}
 		h.subscribers[sb] = []broker.Subscriber{sub}
@@ -343,6 +359,7 @@ func (h *httpServer) Register() error {
 
 	h.registered = true
 	h.rsvc = service
+	h.Unlock()
 
 	return nil
 }
@@ -384,6 +401,7 @@ func (h *httpServer) Deregister() error {
 		for _, sub := range subs {
 			config.Logger.Infof(config.Context, "Unsubscribing from topic: %s", sub.Topic())
 			if err := sub.Unsubscribe(subCtx); err != nil {
+				h.Unlock()
 				config.Logger.Errorf(config.Context, "failed to unsubscribe topic: %s, error: %v", sb.Topic(), err)
 				return err
 			}
@@ -497,7 +515,7 @@ func (h *httpServer) Start() error {
 		}()
 	} else {
 		go func() {
-			if cerr := http.Serve(ts, fn); cerr != nil {
+			if cerr := http.Serve(ts, fn); cerr != nil && !strings.Contains(cerr.Error(), "use of closed network connection") {
 				h.opts.Logger.Error(h.opts.Context, cerr)
 			}
 		}()
