@@ -33,6 +33,7 @@ type httpServer struct {
 	pathHandlers        map[*regexp.Regexp]http.HandlerFunc
 	contentTypeHandlers map[string]http.HandlerFunc
 	opts                server.Options
+	registerRPC         bool
 	sync.RWMutex
 	registered bool
 	init       bool
@@ -80,6 +81,11 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	if h.contentTypeHandlers == nil {
 		h.contentTypeHandlers = make(map[string]http.HandlerFunc)
 	}
+
+	if v, ok := h.opts.Context.Value(registerRPCHandlerKey{}).(bool); ok {
+		h.registerRPC = v
+	}
+
 	if phs, ok := h.opts.Context.Value(pathHandlerKey{}).(*pathHandlerVal); ok && phs.h != nil {
 		for pp, ph := range phs.h {
 			exp, err := regexp.Compile(pp)
@@ -240,6 +246,24 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 		pth := patHandler{pat: pat, mtype: mtype, name: name, rcvr: rcvr}
 		hdlr.name = name
 		hdlr.handlers[md["Method"]] = append(hdlr.handlers[md["Method"]], pth)
+
+		if !h.registerRPC {
+			continue
+		}
+
+		cmp, err = rutil.Parse("/" + hn)
+		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "parsing path pattern err: %v", err)
+			continue
+		}
+		tpl = cmp.Compile()
+		pat, err = rutil.NewPattern(tpl.Version, tpl.OpCodes, tpl.Pool, tpl.Verb)
+		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "creating new pattern err: %v", err)
+			continue
+		}
+		pth = patHandler{pat: pat, mtype: mtype, name: name, rcvr: rcvr}
+		hdlr.handlers[http.MethodPost] = append(hdlr.handlers[http.MethodPost], pth)
 	}
 
 	return hdlr

@@ -123,6 +123,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var match bool
 	var hldr patHandler
 	var handler *httpHandler
+
 	for _, hpat := range h.handlers {
 		handlertmp := hpat.(*httpHandler)
 		for _, hldrtmp := range handlertmp.handlers[r.Method] {

@@ -110,3 +110,10 @@ func ContentTypeHandler(ct string, h http.HandlerFunc) server.Option {
 		o.Context = context.WithValue(o.Context, contentTypeHandlerKey{}, v)
 	}
 }
+
+type registerRPCHandlerKey struct{}
+
+// RegisterRPCHandler registers compatibility endpoints with /ServiceName.ServiceEndpoint method POST
+func RegisterRPCHandler(b bool) server.Option {
+	return server.SetOption(registerRPCHandlerKey{}, b)
+}
