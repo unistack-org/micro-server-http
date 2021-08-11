@@ -89,6 +89,14 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for k, v := range r.Header {
 		md.Set(k, strings.Join(v, ", "))
 	}
+	md.Set("RemoteAddr", r.RemoteAddr)
+	md.Set("Method", r.Method)
+	md.Set("URL", r.URL.String())
+	md.Set("Proto", r.Proto)
+	md.Set("ContentLength", fmt.Sprintf("%d", r.ContentLength))
+	md.Set("TransferEncoding", strings.Join(r.TransferEncoding, ","))
+	md.Set("Host", r.Host)
+	md.Set("RequestURI", r.RequestURI)
 	ctx = metadata.NewIncomingContext(ctx, md)
 
 	defer r.Body.Close()
