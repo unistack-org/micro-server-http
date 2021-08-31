@@ -13,6 +13,14 @@ func SetError(err interface{}) error {
 	return &Error{err: err}
 }
 
+// GetError return underline error
+func GetError(err interface{}) interface{} {
+	if verr, ok := err.(*Error); ok {
+		return verr.err
+	}
+	return err
+}
+
 // Error struct holds error
 type Error struct {
 	err interface{}
