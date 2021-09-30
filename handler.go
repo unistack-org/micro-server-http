@@ -14,8 +14,8 @@ import (
 	"github.com/unistack-org/micro/v3/metadata"
 	"github.com/unistack-org/micro/v3/register"
 	"github.com/unistack-org/micro/v3/server"
+	rhttp "github.com/unistack-org/micro/v3/util/http"
 	rflutil "github.com/unistack-org/micro/v3/util/reflect"
-	rutil "github.com/unistack-org/micro/v3/util/router"
 )
 
 var (
@@ -32,7 +32,7 @@ type patHandler struct {
 	mtype *methodType
 	rcvr  reflect.Value
 	name  string
-	pat   rutil.Pattern
+	pat   *rhttp.Trie
 }
 
 type httpHandler struct {
@@ -62,11 +62,9 @@ func (h *httpHandler) Options() server.HandlerOptions {
 }
 
 func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	for exp, ph := range h.pathHandlers {
-		if exp.MatchString(r.URL.String()) {
-			ph(w, r)
-			return
-		}
+	if ph, _, ok := h.pathHandlers.Search(r.Method, r.URL.Path); ok {
+		ph.(http.HandlerFunc)(w, r)
+		return
 	}
 
 	ct := DefaultContentType
@@ -113,30 +111,19 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	components := strings.Split(path[1:], "/")
-	l := len(components)
-	var verb string
-	idx := strings.LastIndex(components[l-1], ":")
-	if idx == 0 {
-		h.errorHandler(ctx, nil, w, r, fmt.Errorf("not found"), http.StatusNotFound)
-		return
-	}
-	if idx > 0 {
-		c := components[l-1]
-		components[l-1], verb = c[:idx], c[idx+1:]
-	}
-
 	matches := make(map[string]interface{})
 
 	var match bool
 	var hldr patHandler
 	var handler *httpHandler
 
+	fmt.Printf("try to find handler\n")
 	for _, hpat := range h.handlers {
 		handlertmp := hpat.(*httpHandler)
 		for _, hldrtmp := range handlertmp.handlers[r.Method] {
-			mp, merr := hldrtmp.pat.Match(components, verb)
-			if merr == nil {
+			fmt.Printf("ssss method %v path %v %#+v\n", r.Method, path, hldrtmp)
+			_, mp, ok := hldrtmp.pat.Search(r.Method, path)
+			if ok {
 				match = true
 				for k, v := range mp {
 					matches[k] = v

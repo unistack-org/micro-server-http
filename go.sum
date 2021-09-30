@@ -9,8 +9,8 @@ github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTK
 github.com/silas/dag v0.0.0-20210626123444-3804bac2d6d4/go.mod h1:7RTUFBdIRC9nZ7/3RyRNH1bdqIShrDejd1YbLwgPS+I=
 github.com/unistack-org/micro-proto v0.0.9 h1:KrWLS4FUX7UAWNAilQf70uad6ZPf/0EudeddCXllRVc=
 github.com/unistack-org/micro-proto v0.0.9/go.mod h1:Cckwmzd89gvS7ThxzZp9kQR/EOdksFQcsTAtDDyKwrg=
-github.com/unistack-org/micro/v3 v3.7.5 h1:ucNsxi6mApYRpYHbiNKqTLY3V8oGQDfnHn+AbtnFBdo=
-github.com/unistack-org/micro/v3 v3.7.5/go.mod h1:Ke/8WJlNZi4ZYwL9HcsANAbQ66/HocTBEZM+od99/mM=
+github.com/unistack-org/micro/v3 v3.7.6 h1:cobNkaicZR+8nbDWRUmX3/CSLh6ZNSytK2zWth4s4IM=
+github.com/unistack-org/micro/v3 v3.7.6/go.mod h1:Ke/8WJlNZi4ZYwL9HcsANAbQ66/HocTBEZM+od99/mM=
 golang.org/x/net v0.0.0-20210928044308-7d9f5e0b762b h1:eB48h3HiRycXNy8E0Gf5e0hv7YT6Kt14L/D73G1fuwo=
 golang.org/x/net v0.0.0-20210928044308-7d9f5e0b762b/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

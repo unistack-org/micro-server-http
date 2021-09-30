@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"reflect"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -19,9 +18,21 @@ import (
 	"github.com/unistack-org/micro/v3/logger"
 	"github.com/unistack-org/micro/v3/register"
 	"github.com/unistack-org/micro/v3/server"
-	rutil "github.com/unistack-org/micro/v3/util/router"
+	rhttp "github.com/unistack-org/micro/v3/util/http"
 	"golang.org/x/net/netutil"
 )
+
+var httpAllMethods = []string{
+	http.MethodConnect,
+	http.MethodDelete,
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodOptions,
+	http.MethodPatch,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodTrace,
+}
 
 type httpServer struct {
 	hd                  server.Handler
@@ -30,7 +41,7 @@ type httpServer struct {
 	exit                chan chan error
 	subscribers         map[*httpSubscriber][]broker.Subscriber
 	errorHandler        func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
-	pathHandlers        map[*regexp.Regexp]http.HandlerFunc
+	pathHandlers        *rhttp.Trie
 	contentTypeHandlers map[string]http.HandlerFunc
 	opts                server.Options
 	registerRPC         bool
@@ -76,7 +87,7 @@ func (h *httpServer) Init(opts ...server.Option) error {
 		h.handlers = make(map[string]server.Handler)
 	}
 	if h.pathHandlers == nil {
-		h.pathHandlers = make(map[*regexp.Regexp]http.HandlerFunc)
+		h.pathHandlers = rhttp.NewTrie()
 	}
 	if h.contentTypeHandlers == nil {
 		h.contentTypeHandlers = make(map[string]http.HandlerFunc)
@@ -88,12 +99,7 @@ func (h *httpServer) Init(opts ...server.Option) error {
 
 	if phs, ok := h.opts.Context.Value(pathHandlerKey{}).(*pathHandlerVal); ok && phs.h != nil {
 		for pp, ph := range phs.h {
-			exp, err := regexp.Compile(pp)
-			if err != nil {
-				h.Unlock()
-				return err
-			}
-			h.pathHandlers[exp] = ph
+			h.pathHandlers.Insert(httpAllMethods, pp, ph)
 		}
 	}
 	if phs, ok := h.opts.Context.Value(contentTypeHandlerKey{}).(*contentTypeHandlerVal); ok && phs.h != nil {
@@ -186,35 +192,12 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 	}
 
 	tp := reflect.TypeOf(handler)
-
-	/*
-	   for m := 0; m < tp.NumMethod(); m++ {
-	   	    if e := register.ExtractEndpoint(tp.Method(m)); e != nil {
-	   	    	      e.Name = name + "." + e.Name
-
-	   	    	            for k, v := range options.Metadata[e.Name] {
-	   	    	            	        e.Metadata[k] = v
-	   	    	            	              }
-
-	   	    	            	                    eps = append(eps, e)
-	   	    	            	                        }
-	   	    	            	                          }
-
-	*/
+	type nilHandler struct{}
 
 	hdlr.handlers = make(map[string][]patHandler)
 	for hn, md := range options.Metadata {
-		cmp, err := rutil.Parse(md["Path"])
-		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "parsing path pattern err: %v", err)
-			continue
-		}
-		tpl := cmp.Compile()
-		pat, err := rutil.NewPattern(tpl.Version, tpl.OpCodes, tpl.Pool, tpl.Verb)
-		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "creating new pattern err: %v", err)
-			continue
-		}
+		pat := rhttp.NewTrie()
+		pat.Insert([]string{md["Method"]}, md["Path"], &nilHandler{})
 
 		var method reflect.Method
 		mname := hn[strings.Index(hn, ".")+1:]
@@ -251,18 +234,10 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 			continue
 		}
 
-		cmp, err = rutil.Parse("/" + hn)
-		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "parsing path pattern err: %v", err)
-			continue
-		}
-		tpl = cmp.Compile()
-		pat, err = rutil.NewPattern(tpl.Version, tpl.OpCodes, tpl.Pool, tpl.Verb)
-		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "creating new pattern err: %v", err)
-			continue
-		}
-		pth = patHandler{pat: pat, mtype: mtype, name: name, rcvr: rcvr}
+		rpat := rhttp.NewTrie()
+		rpat.Insert([]string{http.MethodPost}, "/"+hn, &nilHandler{})
+
+		pth = patHandler{pat: rpat, mtype: mtype, name: name, rcvr: rcvr}
 		hdlr.handlers[http.MethodPost] = append(hdlr.handlers[http.MethodPost], pth)
 	}
 
@@ -533,7 +508,7 @@ func (h *httpServer) Start() error {
 
 	if srvFunc != nil {
 		go func() {
-			if cerr := srvFunc(ts); cerr != nil {
+			if cerr := srvFunc(ts); cerr != nil && !strings.Contains(cerr.Error(), "use of closed network connection") {
 				h.opts.Logger.Error(h.opts.Context, cerr)
 			}
 		}()
@@ -634,6 +609,6 @@ func NewServer(opts ...server.Option) server.Server {
 		exit:         make(chan chan error),
 		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),
 		errorHandler: DefaultErrorHandler,
-		pathHandlers: make(map[*regexp.Regexp]http.HandlerFunc),
+		pathHandlers: rhttp.NewTrie(),
 	}
 }
