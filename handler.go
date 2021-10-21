@@ -117,11 +117,11 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var hldr patHandler
 	var handler *httpHandler
 
-	fmt.Printf("try to find handler\n")
+	//fmt.Printf("try to find handler\n")
 	for _, hpat := range h.handlers {
 		handlertmp := hpat.(*httpHandler)
 		for _, hldrtmp := range handlertmp.handlers[r.Method] {
-			fmt.Printf("ssss method %v path %v %#+v\n", r.Method, path, hldrtmp)
+			//fmt.Printf("ssss method %v path %v %#+v\n", r.Method, path, hldrtmp)
 			_, mp, ok := hldrtmp.pat.Search(r.Method, path)
 			if ok {
 				match = true
