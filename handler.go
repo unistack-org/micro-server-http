@@ -9,13 +9,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/unistack-org/micro/v3/errors"
-	"github.com/unistack-org/micro/v3/logger"
-	"github.com/unistack-org/micro/v3/metadata"
-	"github.com/unistack-org/micro/v3/register"
-	"github.com/unistack-org/micro/v3/server"
-	rhttp "github.com/unistack-org/micro/v3/util/http"
-	rflutil "github.com/unistack-org/micro/v3/util/reflect"
+	"go.unistack.org/micro/v3/errors"
+	"go.unistack.org/micro/v3/logger"
+	"go.unistack.org/micro/v3/metadata"
+	"go.unistack.org/micro/v3/register"
+	"go.unistack.org/micro/v3/server"
+	rhttp "go.unistack.org/micro/v3/util/http"
+	rflutil "go.unistack.org/micro/v3/util/reflect"
 )
 
 var (
@@ -31,8 +31,8 @@ var (
 type patHandler struct {
 	mtype *methodType
 	rcvr  reflect.Value
-	name  string
 	pat   *rhttp.Trie
+	name  string
 }
 
 type httpHandler struct {
@@ -68,7 +68,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ct := DefaultContentType
-	if htype := r.Header.Get("Content-Type"); htype != "" {
+	if htype := r.Header.Get(metadata.HeaderContentType); htype != "" {
 		ct = htype
 	}
 
@@ -101,7 +101,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/") {
-		h.errorHandler(ctx, nil, w, r, fmt.Errorf("path must contains /"), http.StatusBadRequest)
+		h.errorHandler(ctx, nil, w, r, fmt.Errorf("path must starts with /"), http.StatusBadRequest)
 		return
 	}
 
@@ -117,11 +117,9 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var hldr patHandler
 	var handler *httpHandler
 
-	//fmt.Printf("try to find handler\n")
 	for _, hpat := range h.handlers {
 		handlertmp := hpat.(*httpHandler)
 		for _, hldrtmp := range handlertmp.handlers[r.Method] {
-			//fmt.Printf("ssss method %v path %v %#+v\n", r.Method, path, hldrtmp)
 			_, mp, ok := hldrtmp.pat.Search(r.Method, path)
 			if ok {
 				match = true
@@ -171,7 +169,6 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	replyv = reflect.New(hldr.mtype.ReplyType.Elem())
 
 	function := hldr.mtype.method.Func
-	// function := hldr.rcvr
 	var returnValues []reflect.Value
 
 	if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
@@ -241,13 +238,13 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	scode := int(200)
 	appErr := fn(ctx, hr, replyv.Interface())
 
-	w.Header().Set("Content-Type", ct)
+	w.Header().Set(metadata.HeaderContentType, ct)
 	if md, ok := metadata.FromOutgoingContext(ctx); ok {
 		for k, v := range md {
 			w.Header().Set(k, v)
 		}
 	}
-	if nct := w.Header().Get("Content-Type"); nct != ct {
+	if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
 		if cf, err = h.newCodec(nct); err != nil {
 			h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
 			return

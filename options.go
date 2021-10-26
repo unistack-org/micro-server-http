@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/unistack-org/micro/v3/server"
+	"go.unistack.org/micro/v3/server"
 )
 
 // SetError pass error to caller
@@ -124,4 +124,25 @@ type registerRPCHandlerKey struct{}
 // RegisterRPCHandler registers compatibility endpoints with /ServiceName.ServiceEndpoint method POST
 func RegisterRPCHandler(b bool) server.Option {
 	return server.SetOption(registerRPCHandlerKey{}, b)
+}
+
+type headerKey struct{}
+
+type handlerOptions struct {
+	headers []string
+	cookies []string
+}
+
+type FillRequestOption func(*handlerOptions)
+
+func Header(headers ...string) FillRequestOption {
+	return func(o *handlerOptions) {
+		o.headers = append(o.headers, headers...)
+	}
+}
+
+func Cookie(cookies ...string) FillRequestOption {
+	return func(o *handlerOptions) {
+		o.cookies = append(o.cookies, cookies...)
+	}
 }
