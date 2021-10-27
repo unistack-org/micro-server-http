@@ -1,5 +1,5 @@
 // Package http implements a go-micro.Server
-package http
+package http // import "go.unistack.org/micro-server-http/v3"
 
 import (
 	"context"
