@@ -78,44 +78,27 @@ func ErrorHandler(fn func(ctx context.Context, s server.Handler, w http.Response
 type (
 	pathHandlerKey struct{}
 	pathHandlerVal struct {
-		h map[string]http.HandlerFunc
+		h map[string]map[string]http.HandlerFunc
 	}
 )
 
 // PathHandler specifies http handler for path regexp
-func PathHandler(path string, h http.HandlerFunc) server.Option {
+func PathHandler(method, path string, handler http.HandlerFunc) server.Option {
 	return func(o *server.Options) {
 		if o.Context == nil {
 			o.Context = context.Background()
 		}
 		v, ok := o.Context.Value(pathHandlerKey{}).(*pathHandlerVal)
 		if !ok {
-			v = &pathHandlerVal{h: make(map[string]http.HandlerFunc)}
+			v = &pathHandlerVal{h: make(map[string]map[string]http.HandlerFunc)}
 		}
-		v.h[path] = h
-		o.Context = context.WithValue(o.Context, pathHandlerKey{}, v)
-	}
-}
-
-type (
-	contentTypeHandlerKey struct{}
-	contentTypeHandlerVal struct {
-		h map[string]http.HandlerFunc
-	}
-)
-
-// ContentTypeHandler specifies http handler for Content-Type
-func ContentTypeHandler(ct string, h http.HandlerFunc) server.Option {
-	return func(o *server.Options) {
-		if o.Context == nil {
-			o.Context = context.Background()
-		}
-		v, ok := o.Context.Value(contentTypeHandlerKey{}).(*contentTypeHandlerVal)
+		m, ok := v.h[method]
 		if !ok {
-			v = &contentTypeHandlerVal{h: make(map[string]http.HandlerFunc)}
+			m = make(map[string]http.HandlerFunc)
+			v.h[method] = m
 		}
-		v.h[ct] = h
-		o.Context = context.WithValue(o.Context, contentTypeHandlerKey{}, v)
+		m[path] = handler
+		o.Context = context.WithValue(o.Context, pathHandlerKey{}, v)
 	}
 }
 

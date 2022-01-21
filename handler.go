@@ -31,14 +31,13 @@ var (
 type patHandler struct {
 	mtype *methodType
 	rcvr  reflect.Value
-	pat   *rhttp.Trie
 	name  string
 }
 
 type httpHandler struct {
 	opts     server.HandlerOptions
 	hd       interface{}
-	handlers map[string][]patHandler
+	handlers *rhttp.Trie
 	name     string
 	eps      []*register.Endpoint
 	sopts    server.Options
@@ -62,6 +61,7 @@ func (h *httpHandler) Options() server.HandlerOptions {
 }
 
 func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// check for http.HandlerFunc handlers
 	if ph, _, ok := h.pathHandlers.Search(r.Method, r.URL.Path); ok {
 		ph.(http.HandlerFunc)(w, r)
 		return
@@ -72,17 +72,10 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ct = htype
 	}
 
-	if idx := strings.Index(ct, ":"); idx > 0 {
-		if ph, ok := h.contentTypeHandlers[ct[:idx]]; ok {
-			ph(w, r)
-			return
-		}
-	}
-
 	ctx := context.WithValue(r.Context(), rspCodeKey{}, &rspCodeVal{})
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		md = metadata.New(len(r.Header))
+		md = metadata.New(len(r.Header) + 8)
 	}
 	for k, v := range r.Header {
 		md.Set(k, strings.Join(v, ", "))
@@ -114,22 +107,20 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	matches := make(map[string]interface{})
 
 	var match bool
-	var hldr patHandler
+	var hldr *patHandler
 	var handler *httpHandler
 
-	for _, hpat := range h.handlers {
-		handlertmp := hpat.(*httpHandler)
-		for _, hldrtmp := range handlertmp.handlers[r.Method] {
-			_, mp, ok := hldrtmp.pat.Search(r.Method, path)
-			if ok {
-				match = true
-				for k, v := range mp {
-					matches[k] = v
-				}
-				hldr = hldrtmp
-				handler = handlertmp
-				break
+	for _, shdlr := range h.handlers {
+		hdlr := shdlr.(*httpHandler)
+		fh, mp, ok := hdlr.handlers.Search(r.Method, path)
+		if ok {
+			match = true
+			for k, v := range mp {
+				matches[k] = v
 			}
+			hldr = fh.(*patHandler)
+			handler = hdlr
+			break
 		}
 	}
 
@@ -171,8 +162,14 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	function := hldr.mtype.method.Func
 	var returnValues []reflect.Value
 
-	if err = cf.ReadBody(r.Body, argv.Interface()); err != nil && err != io.EOF {
+	buf, err := io.ReadAll(r.Body)
+	if err != nil && err != io.EOF {
 		h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	if err = cf.Unmarshal(buf, argv.Interface()); err != nil {
+		h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
 		return
 	}
 
@@ -182,18 +179,12 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := cf.Marshal(argv.Interface())
-	if err != nil {
-		h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
-		return
-	}
-
 	hr := &rpcRequest{
 		codec:       cf,
 		service:     handler.sopts.Name,
 		contentType: ct,
 		method:      fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name),
-		body:        b,
+		body:        buf,
 		payload:     argv.Interface(),
 		header:      md,
 	}
@@ -255,14 +246,14 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		switch verr := appErr.(type) {
 		case *errors.Error:
 			scode = int(verr.Code)
-			b, err = cf.Marshal(verr)
+			buf, err = cf.Marshal(verr)
 		case *Error:
-			b, err = cf.Marshal(verr.err)
+			buf, err = cf.Marshal(verr.err)
 		default:
-			b, err = cf.Marshal(appErr)
+			buf, err = cf.Marshal(appErr)
 		}
 	} else {
-		b, err = cf.Marshal(replyv.Interface())
+		buf, err = cf.Marshal(replyv.Interface())
 	}
 
 	if err != nil && handler.sopts.Logger.V(logger.ErrorLevel) {
@@ -275,7 +266,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(scode)
 
-	if _, cerr := w.Write(b); cerr != nil {
-		logger.DefaultLogger.Errorf(ctx, "write failed: %v", cerr)
+	if _, cerr := w.Write(buf); cerr != nil {
+		handler.sopts.Logger.Errorf(ctx, "write failed: %v", cerr)
 	}
 }
