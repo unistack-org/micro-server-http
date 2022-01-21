@@ -22,29 +22,16 @@ import (
 	"golang.org/x/net/netutil"
 )
 
-var httpAllMethods = []string{
-	http.MethodConnect,
-	http.MethodDelete,
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodOptions,
-	http.MethodPatch,
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodTrace,
-}
-
 type httpServer struct {
-	hd                  server.Handler
-	rsvc                *register.Service
-	handlers            map[string]server.Handler
-	exit                chan chan error
-	subscribers         map[*httpSubscriber][]broker.Subscriber
-	errorHandler        func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
-	pathHandlers        *rhttp.Trie
-	contentTypeHandlers map[string]http.HandlerFunc
-	opts                server.Options
-	registerRPC         bool
+	hd           server.Handler
+	rsvc         *register.Service
+	handlers     map[string]server.Handler
+	exit         chan chan error
+	subscribers  map[*httpSubscriber][]broker.Subscriber
+	errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
+	pathHandlers *rhttp.Trie
+	opts         server.Options
+	registerRPC  bool
 	sync.RWMutex
 	registered bool
 	init       bool
@@ -89,22 +76,19 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	if h.pathHandlers == nil {
 		h.pathHandlers = rhttp.NewTrie()
 	}
-	if h.contentTypeHandlers == nil {
-		h.contentTypeHandlers = make(map[string]http.HandlerFunc)
-	}
 
 	if v, ok := h.opts.Context.Value(registerRPCHandlerKey{}).(bool); ok {
 		h.registerRPC = v
 	}
 
 	if phs, ok := h.opts.Context.Value(pathHandlerKey{}).(*pathHandlerVal); ok && phs.h != nil {
-		for pp, ph := range phs.h {
-			h.pathHandlers.Insert(httpAllMethods, pp, ph)
-		}
-	}
-	if phs, ok := h.opts.Context.Value(contentTypeHandlerKey{}).(*contentTypeHandlerVal); ok && phs.h != nil {
-		for pp, ph := range phs.h {
-			h.contentTypeHandlers[pp] = ph
+		for pm, ps := range phs.h {
+			for pp, ph := range ps {
+				if err := h.pathHandlers.Insert([]string{pm}, pp, ph); err != nil {
+					h.Unlock()
+					return err
+				}
+			}
 		}
 	}
 	h.Unlock()
@@ -148,6 +132,7 @@ func (h *httpServer) Init(opts ...server.Option) error {
 }
 
 func (h *httpServer) Handle(handler server.Handler) error {
+	// passed unknown handler
 	hdlr, ok := handler.(*httpHandler)
 	if !ok {
 		h.Lock()
@@ -156,6 +141,7 @@ func (h *httpServer) Handle(handler server.Handler) error {
 		return nil
 	}
 
+	// passed http.Handler like some muxer
 	if _, ok := hdlr.hd.(http.Handler); ok {
 		h.Lock()
 		h.hd = handler
@@ -163,6 +149,7 @@ func (h *httpServer) Handle(handler server.Handler) error {
 		return nil
 	}
 
+	// passed micro compat handler
 	h.Lock()
 	if h.handlers == nil {
 		h.handlers = make(map[string]server.Handler)
@@ -185,20 +172,16 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 	}
 
 	hdlr := &httpHandler{
-		eps:   eps,
-		hd:    handler,
-		opts:  options,
-		sopts: h.opts,
+		eps:      eps,
+		hd:       handler,
+		opts:     options,
+		sopts:    h.opts,
+		handlers: rhttp.NewTrie(),
 	}
 
 	tp := reflect.TypeOf(handler)
-	type nilHandler struct{}
 
-	hdlr.handlers = make(map[string][]patHandler)
 	for hn, md := range options.Metadata {
-		pat := rhttp.NewTrie()
-		pat.Insert([]string{md["Method"]}, md["Path"], &nilHandler{})
-
 		var method reflect.Method
 		mname := hn[strings.Index(hn, ".")+1:]
 		for m := 0; m < tp.NumMethod(); m++ {
@@ -220,25 +203,25 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 			h.opts.Logger.Errorf(h.opts.Context, "%v", err)
 			continue
 		} else if mtype == nil {
+			h.opts.Logger.Errorf(h.opts.Context, "nil mtype for %s", mname)
 			continue
 		}
 
 		rcvr := reflect.ValueOf(handler)
 		name := reflect.Indirect(rcvr).Type().Name()
 
-		pth := patHandler{pat: pat, mtype: mtype, name: name, rcvr: rcvr}
+		pth := &patHandler{mtype: mtype, name: name, rcvr: rcvr}
 		hdlr.name = name
-		hdlr.handlers[md["Method"]] = append(hdlr.handlers[md["Method"]], pth)
 
-		if !h.registerRPC {
-			continue
+		if err := hdlr.handlers.Insert([]string{md["Method"]}, md["Path"], pth); err != nil {
+			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
 		}
 
-		rpat := rhttp.NewTrie()
-		rpat.Insert([]string{http.MethodPost}, "/"+hn, &nilHandler{})
-
-		pth = patHandler{pat: rpat, mtype: mtype, name: name, rcvr: rcvr}
-		hdlr.handlers[http.MethodPost] = append(hdlr.handlers[http.MethodPost], pth)
+		if h.registerRPC {
+			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
+				h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
+			}
+		}
 	}
 
 	return hdlr
