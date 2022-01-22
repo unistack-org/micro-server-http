@@ -453,12 +453,12 @@ func (h *httpServer) Start() error {
 	switch {
 	case handler == nil && h.hd == nil:
 		handler = h
+	case len(h.handlers) > 0 && h.hd != nil:
+		handler = h
 	case handler == nil && h.hd != nil:
 		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
 			handler = hdlr
 		}
-	case len(h.handlers) > 0 && h.hd != nil:
-		handler = h
 	}
 
 	if handler == nil {
