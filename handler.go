@@ -124,7 +124,12 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if !match {
+	if !match && h.hd != nil {
+		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
+			hdlr.ServeHTTP(w, r)
+			return
+		}
+	} else if !match {
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusNotFound)
 		return
 	}

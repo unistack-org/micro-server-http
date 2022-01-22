@@ -22,6 +22,8 @@ import (
 	"golang.org/x/net/netutil"
 )
 
+var _ server.Server = &httpServer{}
+
 type httpServer struct {
 	hd           server.Handler
 	rsvc         *register.Service
@@ -448,12 +450,15 @@ func (h *httpServer) Start() error {
 		}
 	}
 
-	if handler == nil && h.hd == nil {
+	switch {
+	case handler == nil && h.hd == nil:
 		handler = h
-	} else if handler == nil && h.hd != nil {
+	case handler == nil && h.hd != nil:
 		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
 			handler = hdlr
 		}
+	case len(h.handlers) > 0 && h.hd != nil:
+		handler = h
 	}
 
 	if handler == nil {
@@ -585,7 +590,7 @@ func (h *httpServer) Name() string {
 	return h.opts.Name
 }
 
-func NewServer(opts ...server.Option) server.Server {
+func NewServer(opts ...server.Option) *httpServer {
 	options := server.NewOptions(opts...)
 	return &httpServer{
 		opts:         options,
