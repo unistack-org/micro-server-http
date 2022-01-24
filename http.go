@@ -4,6 +4,7 @@ package http // import "go.unistack.org/micro-server-http/v3"
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -496,13 +497,13 @@ func (h *httpServer) Start() error {
 
 	if srvFunc != nil {
 		go func() {
-			if cerr := srvFunc(ts); cerr != nil && !strings.Contains(cerr.Error(), "use of closed network connection") {
+			if cerr := srvFunc(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
 				h.opts.Logger.Error(h.opts.Context, cerr)
 			}
 		}()
 	} else {
 		go func() {
-			if cerr := http.Serve(ts, fn); cerr != nil && !strings.Contains(cerr.Error(), "use of closed network connection") {
+			if cerr := http.Serve(ts, fn); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
 				h.opts.Logger.Error(h.opts.Context, cerr)
 			}
 		}()
