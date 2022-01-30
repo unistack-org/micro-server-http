@@ -221,8 +221,9 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 		}
 
 		if h.registerRPC {
+			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
 			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
-				h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
+				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
 			}
 		}
 	}
