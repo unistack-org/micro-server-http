@@ -97,7 +97,6 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("path must starts with /"), http.StatusBadRequest)
 		return
 	}
-
 	cf, err := h.newCodec(ct)
 	if err != nil {
 		h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
@@ -121,6 +120,27 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			hldr = fh.(*patHandler)
 			handler = hdlr
 			break
+		}
+	}
+
+	if !match && h.registerRPC {
+		microMethod, mok := md.Get(metadata.HeaderEndpoint)
+		if mok {
+			serviceMethod := strings.Split(microMethod, ".")
+			if len(serviceMethod) == 2 {
+				if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
+					hdlr := shdlr.(*httpHandler)
+					fh, mp, ok := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
+					if ok {
+						match = true
+						for k, v := range mp {
+							matches[k] = v
+						}
+						hldr = fh.(*patHandler)
+						handler = hdlr
+					}
+				}
+			}
 		}
 	}
 
