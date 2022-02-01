@@ -97,11 +97,6 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("path must starts with /"), http.StatusBadRequest)
 		return
 	}
-	cf, err := h.newCodec(ct)
-	if err != nil {
-		h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
-		return
-	}
 
 	matches := make(map[string]interface{})
 
@@ -164,6 +159,12 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for k, v := range umd {
 			matches[k] = v
 		}
+	}
+
+	cf, err := h.newCodec(ct)
+	if err != nil {
+		h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
+		return
 	}
 
 	var argv, replyv reflect.Value
