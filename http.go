@@ -184,6 +184,14 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 
 	tp := reflect.TypeOf(handler)
 
+	if len(options.Metadata) == 0 {
+		if h.registerRPC {
+			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
+			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
+				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+			}
+		}
+	}
 	for hn, md := range options.Metadata {
 		var method reflect.Method
 		mname := hn[strings.Index(hn, ".")+1:]
