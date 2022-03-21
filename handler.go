@@ -210,7 +210,6 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		service:     handler.sopts.Name,
 		contentType: ct,
 		method:      fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name),
-		body:        buf,
 		payload:     argv.Interface(),
 		header:      md,
 	}
