@@ -151,7 +151,7 @@ func (s *httpServer) createSubHandler(sb *httpSubscriber, opts server.Options) b
 					vals = append(vals, reflect.ValueOf(ctx))
 				}
 
-				vals = append(vals, reflect.ValueOf(msg.Payload()))
+				vals = append(vals, reflect.ValueOf(msg.Body()))
 
 				returnValues := handler.method.Call(vals)
 				if err := returnValues[0].Interface(); err != nil {
@@ -170,7 +170,6 @@ func (s *httpServer) createSubHandler(sb *httpSubscriber, opts server.Options) b
 					contentType: ct,
 					payload:     req.Interface(),
 					header:      msg.Header,
-					body:        msg.Body,
 					codec:       cf,
 				})
 			}()
