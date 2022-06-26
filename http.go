@@ -109,10 +109,6 @@ func (h *httpServer) Init(opts ...server.Option) error {
 		h.RUnlock()
 		return err
 	}
-	if err := h.opts.Auth.Init(); err != nil {
-		h.RUnlock()
-		return err
-	}
 	if err := h.opts.Logger.Init(); err != nil {
 		h.RUnlock()
 		return err
@@ -345,6 +341,7 @@ func (h *httpServer) Register() error {
 		}
 		opts = append(opts, broker.SubscribeContext(subCtx))
 		opts = append(opts, broker.SubscribeAutoAck(sb.Options().AutoAck))
+		opts = append(opts, broker.SubscribeBodyOnly(sb.Options().BodyOnly))
 
 		sub, err := config.Broker.Subscribe(subCtx, sb.Topic(), handler, opts...)
 		if err != nil {
