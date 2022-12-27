@@ -62,7 +62,7 @@ func (h *httpHandler) Options() server.HandlerOptions {
 
 func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// check for http.HandlerFunc handlers
-	if ph, _, ok := h.pathHandlers.Search(r.Method, r.URL.Path); ok {
+	if ph, _, err := h.pathHandlers.Search(r.Method, r.URL.Path); err == nil {
 		ph.(http.HandlerFunc)(w, r)
 		return
 	}
@@ -106,8 +106,8 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for _, shdlr := range h.handlers {
 		hdlr := shdlr.(*httpHandler)
-		fh, mp, ok := hdlr.handlers.Search(r.Method, path)
-		if ok {
+		fh, mp, err := hdlr.handlers.Search(r.Method, path)
+		if err == nil {
 			match = true
 			for k, v := range mp {
 				matches[k] = v
@@ -115,6 +115,8 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			hldr = fh.(*patHandler)
 			handler = hdlr
 			break
+		} else if err == rhttp.ErrMethodNotAllowed && !h.registerRPC {
+			h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusNotFound)
 		}
 	}
 
@@ -125,8 +127,8 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if len(serviceMethod) == 2 {
 				if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
 					hdlr := shdlr.(*httpHandler)
-					fh, mp, ok := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
-					if ok {
+					fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
+					if err == nil {
 						match = true
 						for k, v := range mp {
 							matches[k] = v
@@ -216,7 +218,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// define the handler func
 	fn := func(fctx context.Context, req server.Request, rsp interface{}) (err error) {
-		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(fctx), reflect.ValueOf(argv.Interface()), reflect.ValueOf(rsp)})
+		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(fctx), argv, reflect.ValueOf(rsp)})
 
 		// The return value for the method is an error.
 		if rerr := returnValues[0].Interface(); rerr != nil {
