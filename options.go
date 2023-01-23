@@ -68,10 +68,12 @@ func Server(hs *http.Server) server.Option {
 	return server.SetOption(serverKey{}, hs)
 }
 
+type errorHandler func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)
+
 type errorHandlerKey struct{}
 
 // ErrorHandler specifies handler for errors
-func ErrorHandler(fn func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)) server.Option {
+func ErrorHandler(fn errorHandler) server.Option {
 	return server.SetOption(errorHandlerKey{}, fn)
 }
 

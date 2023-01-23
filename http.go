@@ -602,11 +602,15 @@ func (h *httpServer) Name() string {
 
 func NewServer(opts ...server.Option) *httpServer {
 	options := server.NewOptions(opts...)
+	eh := DefaultErrorHandler
+	if v, ok := options.Context.Value(errorHandlerKey{}).(errorHandler); ok && v != nil {
+		eh = v
+	}
 	return &httpServer{
 		opts:         options,
 		exit:         make(chan chan error),
 		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),
-		errorHandler: DefaultErrorHandler,
+		errorHandler: eh,
 		pathHandlers: rhttp.NewTrie(),
 	}
 }
