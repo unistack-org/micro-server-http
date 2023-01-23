@@ -212,6 +212,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		service:     handler.sopts.Name,
 		contentType: ct,
 		method:      fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name),
+		endpoint:    fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name),
 		payload:     argv.Interface(),
 		header:      md,
 	}
