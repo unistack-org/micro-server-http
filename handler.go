@@ -117,6 +117,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		} else if err == rhttp.ErrMethodNotAllowed && !h.registerRPC {
 			h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusNotFound)
+			return
 		}
 	}
 
