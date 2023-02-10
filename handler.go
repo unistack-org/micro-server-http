@@ -73,6 +73,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.WithValue(r.Context(), rspCodeKey{}, &rspCodeVal{})
+	ctx = context.WithValue(ctx, rspHeaderKey{}, &rspHeaderVal{})
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		md = metadata.New(len(r.Header) + 8)
