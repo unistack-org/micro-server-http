@@ -73,6 +73,7 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.WithValue(r.Context(), rspCodeKey{}, &rspCodeVal{})
+	ctx = context.WithValue(ctx, rspHeaderKey{}, &rspHeaderVal{})
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		md = metadata.New(len(r.Header) + 8)
@@ -262,6 +263,13 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if md, ok := metadata.FromOutgoingContext(ctx); ok {
 		for k, v := range md {
 			w.Header().Set(k, v)
+		}
+	}
+	if md := getRspHeader(ctx); md != nil {
+		for k, v := range md {
+			for _, vv := range v {
+				w.Header().Add(k, vv)
+			}
 		}
 	}
 	if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
