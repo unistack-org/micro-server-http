@@ -264,6 +264,13 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(k, v)
 		}
 	}
+	if md := getRspHeader(ctx); md != nil {
+		for k, v := range md {
+			for _, vv := range v {
+				w.Header().Add(k, vv)
+			}
+		}
+	}
 	if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
 		if cf, err = h.newCodec(nct); err != nil {
 			h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
