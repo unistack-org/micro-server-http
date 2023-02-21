@@ -135,11 +135,9 @@ func RegisterRPCHandler(b bool) server.Option {
 
 type handlerMetadataKey struct{}
 
-func HandlerMetadata(md map[string]map[string]string) server.HandlerOption {
+func HandlerMetadata(md map[string]map[string]map[string]string) server.HandlerOption {
 	return server.SetHandlerOption(handlerMetadataKey{}, md)
 }
-
-type headerKey struct{}
 
 type handlerOptions struct {
 	headers []string
