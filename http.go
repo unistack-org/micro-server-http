@@ -235,6 +235,56 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 		}
 	}
 
+	metadata, ok := options.Context.Value(handlerEndpointsKey{}).([]EndpointMetadata)
+	if !ok {
+		return hdlr
+	}
+
+	for _, md := range metadata {
+		hn := md.Name
+		var method reflect.Method
+		mname := hn[strings.Index(hn, ".")+1:]
+		for m := 0; m < tp.NumMethod(); m++ {
+			mn := tp.Method(m)
+			if mn.Name != mname {
+				continue
+			}
+			method = mn
+			break
+		}
+
+		if method.Name == "" && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "nil method for %s", mname)
+			continue
+		}
+
+		mtype, err := prepareEndpoint(method)
+		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "%v", err)
+			continue
+		} else if mtype == nil {
+			h.opts.Logger.Errorf(h.opts.Context, "nil mtype for %s", mname)
+			continue
+		}
+
+		rcvr := reflect.ValueOf(handler)
+		name := reflect.Indirect(rcvr).Type().Name()
+
+		pth := &patHandler{mtype: mtype, name: name, rcvr: rcvr}
+		hdlr.name = name
+
+		if err := hdlr.handlers.Insert([]string{md.Method}, md.Path, pth); err != nil {
+			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md.Method, md.Path)
+		}
+
+		if h.registerRPC {
+			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
+			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
+				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+			}
+		}
+	}
+
 	return hdlr
 }
 
