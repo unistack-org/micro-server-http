@@ -133,10 +133,18 @@ func RegisterRPCHandler(b bool) server.Option {
 	return server.SetOption(registerRPCHandlerKey{}, b)
 }
 
-type handlerMetadataKey struct{}
+type handlerEndpointsKey struct{}
 
-func HandlerMetadata(md map[string]map[string]map[string]string) server.HandlerOption {
-	return server.SetHandlerOption(handlerMetadataKey{}, md)
+type EndpointMetadata struct {
+	Name   string
+	Path   string
+	Method string
+	Body   string
+	Stream bool
+}
+
+func HandlerEndpoints(md []EndpointMetadata) server.HandlerOption {
+	return server.SetHandlerOption(handlerEndpointsKey{}, md)
 }
 
 type handlerOptions struct {
