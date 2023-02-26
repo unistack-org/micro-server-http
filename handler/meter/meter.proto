@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package micro.server.http.v3.handler.meter;
+option go_package = "go.unistack.org/micro-server-http/v3/handler/meter;meter";
+
+import "api/annotations.proto";
+import "openapiv3/annotations.proto";
+import "codec/frame.proto";
+
+service MeterService {
+	rpc Metrics(micro.codec.Frame) returns (micro.codec.Frame) {
+		option (micro.openapiv3.openapiv3_operation) = {
+      operation_id: "Metrics";
+      responses: {
+        default: {
+          reference: {
+            _ref: "micro.codec.Frame";
+          };
+        };
+      };
+    };
+		option (micro.api.http) = { get: "/metrics"; };
+  };
+};
