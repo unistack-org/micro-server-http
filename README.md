@@ -9,8 +9,8 @@ to create a HTTP Server that could potentially be used for REST based API servic
 import (
 	"net/http"
 
-	"github.com/unistack-org/micro/v3/server"
-	httpServer "github.com/unistack-org/micro-server-http"
+	"go.unistack.org/micro/v4/server"
+	httpServer "go.unistack.org/micro-server-http/v4"
 )
 
 func main() {
@@ -37,9 +37,9 @@ Or as part of a service
 import (
 	"net/http"
 
-	"github.com/unistack-org/micro/v3"
-	"github.com/unistack-org/micro/v3/server"
-	httpServer "github.com/unistack-org/micro-server-http"
+	"go.unistack.org/micro/v4"
+	"go.unistack.org/micro/v4/server"
+	httpServer "go.unistack.org/micro-server-http/v4"
 )
 
 func main() {

@@ -7,7 +7,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"go.unistack.org/micro/v3/server"
+	"go.unistack.org/micro/v4/server"
 )
 
 type methodType struct {

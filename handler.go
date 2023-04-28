@@ -9,13 +9,13 @@ import (
 	"strings"
 	"sync"
 
-	"go.unistack.org/micro/v3/errors"
-	"go.unistack.org/micro/v3/logger"
-	"go.unistack.org/micro/v3/metadata"
-	"go.unistack.org/micro/v3/register"
-	"go.unistack.org/micro/v3/server"
-	rhttp "go.unistack.org/micro/v3/util/http"
-	rflutil "go.unistack.org/micro/v3/util/reflect"
+	"go.unistack.org/micro/v4/errors"
+	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/metadata"
+	"go.unistack.org/micro/v4/register"
+	"go.unistack.org/micro/v4/server"
+	rhttp "go.unistack.org/micro/v4/util/http"
+	rflutil "go.unistack.org/micro/v4/util/reflect"
 )
 
 var (
@@ -62,7 +62,7 @@ func (h *httpHandler) Options() server.HandlerOptions {
 
 func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// check for http.HandlerFunc handlers
-	if ph, _, ok := h.pathHandlers.Search(r.Method, r.URL.Path); ok {
+	if ph, _, err := h.pathHandlers.Search(r.Method, r.URL.Path); err == nil {
 		ph.(http.HandlerFunc)(w, r)
 		return
 	}
@@ -73,21 +73,22 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.WithValue(r.Context(), rspCodeKey{}, &rspCodeVal{})
+	ctx = context.WithValue(ctx, rspHeaderKey{}, &rspHeaderVal{})
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		md = metadata.New(len(r.Header) + 8)
 	}
 	for k, v := range r.Header {
-		md.Set(k, strings.Join(v, ", "))
+		md[k] = strings.Join(v, ", ")
 	}
-	md.Set("RemoteAddr", r.RemoteAddr)
-	md.Set("Method", r.Method)
-	md.Set("URL", r.URL.String())
-	md.Set("Proto", r.Proto)
-	md.Set("ContentLength", fmt.Sprintf("%d", r.ContentLength))
-	md.Set("TransferEncoding", strings.Join(r.TransferEncoding, ","))
-	md.Set("Host", r.Host)
-	md.Set("RequestURI", r.RequestURI)
+	md["RemoteAddr"] = r.RemoteAddr
+	md["Method"] = r.Method
+	md["URL"] = r.URL.String()
+	md["Proto"] = r.Proto
+	md["ContentLength"] = fmt.Sprintf("%d", r.ContentLength)
+	md["TransferEncoding"] = strings.Join(r.TransferEncoding, ",")
+	md["Host"] = r.Host
+	md["RequestURI"] = r.RequestURI
 	ctx = metadata.NewIncomingContext(ctx, md)
 
 	defer r.Body.Close()
@@ -106,8 +107,8 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for _, shdlr := range h.handlers {
 		hdlr := shdlr.(*httpHandler)
-		fh, mp, ok := hdlr.handlers.Search(r.Method, path)
-		if ok {
+		fh, mp, err := hdlr.handlers.Search(r.Method, path)
+		if err == nil {
 			match = true
 			for k, v := range mp {
 				matches[k] = v
@@ -115,6 +116,9 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			hldr = fh.(*patHandler)
 			handler = hdlr
 			break
+		} else if err == rhttp.ErrMethodNotAllowed && !h.registerRPC {
+			h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusMethodNotAllowed)
+			return
 		}
 	}
 
@@ -125,8 +129,8 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if len(serviceMethod) == 2 {
 				if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
 					hdlr := shdlr.(*httpHandler)
-					fh, mp, ok := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
-					if ok {
+					fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
+					if err == nil {
 						match = true
 						for k, v := range mp {
 							matches[k] = v
@@ -210,14 +214,14 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		service:     handler.sopts.Name,
 		contentType: ct,
 		method:      fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name),
-		body:        buf,
+		endpoint:    fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name),
 		payload:     argv.Interface(),
 		header:      md,
 	}
 
 	// define the handler func
 	fn := func(fctx context.Context, req server.Request, rsp interface{}) (err error) {
-		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(fctx), reflect.ValueOf(argv.Interface()), reflect.ValueOf(rsp)})
+		returnValues = function.Call([]reflect.Value{hldr.rcvr, hldr.mtype.prepareContext(fctx), argv, reflect.ValueOf(rsp)})
 
 		// The return value for the method is an error.
 		if rerr := returnValues[0].Interface(); rerr != nil {
@@ -259,6 +263,13 @@ func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if md, ok := metadata.FromOutgoingContext(ctx); ok {
 		for k, v := range md {
 			w.Header().Set(k, v)
+		}
+	}
+	if md := getRspHeader(ctx); md != nil {
+		for k, v := range md {
+			for _, vv := range v {
+				w.Header().Add(k, vv)
+			}
 		}
 	}
 	if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {

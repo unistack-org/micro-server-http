@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.unistack.org/micro/v3/server"
+	"go.unistack.org/micro/v4/server"
 )
 
 // SetError pass error to caller
@@ -38,11 +38,33 @@ type (
 	}
 )
 
+type (
+	rspHeaderKey struct{}
+	rspHeaderVal struct {
+		h http.Header
+	}
+)
+
+// SetRspHeader add response headers
+func SetRspHeader(ctx context.Context, h http.Header) {
+	if rsp, ok := ctx.Value(rspHeaderKey{}).(*rspHeaderVal); ok {
+		rsp.h = h
+	}
+}
+
 // SetRspCode saves response code in context, must be used by handler to specify http code
 func SetRspCode(ctx context.Context, code int) {
 	if rsp, ok := ctx.Value(rspCodeKey{}).(*rspCodeVal); ok {
 		rsp.code = code
 	}
+}
+
+// getRspHeader get http.Header from context
+func getRspHeader(ctx context.Context) http.Header {
+	if rsp, ok := ctx.Value(rspHeaderKey{}).(*rspHeaderVal); ok {
+		return rsp.h
+	}
+	return nil
 }
 
 // GetRspCode used internally by generated http server handler
@@ -68,10 +90,12 @@ func Server(hs *http.Server) server.Option {
 	return server.SetOption(serverKey{}, hs)
 }
 
+type errorHandler func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)
+
 type errorHandlerKey struct{}
 
 // ErrorHandler specifies handler for errors
-func ErrorHandler(fn func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)) server.Option {
+func ErrorHandler(fn errorHandler) server.Option {
 	return server.SetOption(errorHandlerKey{}, fn)
 }
 
@@ -109,7 +133,19 @@ func RegisterRPCHandler(b bool) server.Option {
 	return server.SetOption(registerRPCHandlerKey{}, b)
 }
 
-type headerKey struct{}
+type handlerEndpointsKey struct{}
+
+type EndpointMetadata struct {
+	Name   string
+	Path   string
+	Method string
+	Body   string
+	Stream bool
+}
+
+func HandlerEndpoints(md []EndpointMetadata) server.HandlerOption {
+	return server.SetHandlerOption(handlerEndpointsKey{}, md)
+}
 
 type handlerOptions struct {
 	headers []string

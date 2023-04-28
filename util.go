@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"go.unistack.org/micro/v3/metadata"
-	rutil "go.unistack.org/micro/v3/util/reflect"
+	"go.unistack.org/micro/v4/metadata"
+	rutil "go.unistack.org/micro/v4/util/reflect"
 )
 
 func FillRequest(ctx context.Context, req interface{}, opts ...FillRequestOption) error {

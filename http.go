@@ -1,5 +1,5 @@
 // Package http implements a go-micro.Server
-package http // import "go.unistack.org/micro-server-http/v3"
+package http // import "go.unistack.org/micro-server-http/v4"
 
 import (
 	"context"
@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"go.unistack.org/micro/v3/broker"
-	"go.unistack.org/micro/v3/codec"
-	"go.unistack.org/micro/v3/logger"
-	"go.unistack.org/micro/v3/register"
-	"go.unistack.org/micro/v3/server"
-	rhttp "go.unistack.org/micro/v3/util/http"
+	"go.unistack.org/micro/v4/broker"
+	"go.unistack.org/micro/v4/codec"
+	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/register"
+	"go.unistack.org/micro/v4/server"
+	rhttp "go.unistack.org/micro/v4/util/http"
 	"golang.org/x/net/netutil"
 )
 
@@ -109,10 +109,6 @@ func (h *httpServer) Init(opts ...server.Option) error {
 		h.RUnlock()
 		return err
 	}
-	if err := h.opts.Auth.Init(); err != nil {
-		h.RUnlock()
-		return err
-	}
 	if err := h.opts.Logger.Init(); err != nil {
 		h.RUnlock()
 		return err
@@ -184,14 +180,17 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 
 	tp := reflect.TypeOf(handler)
 
-	if len(options.Metadata) == 0 {
-		if h.registerRPC {
-			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
-			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
-				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+	/*
+		if len(options.Metadata) == 0 {
+			if h.registerRPC {
+				h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
+				if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
+					h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+				}
 			}
 		}
-	}
+	*/
+
 	for hn, md := range options.Metadata {
 		var method reflect.Method
 		mname := hn[strings.Index(hn, ".")+1:]
@@ -226,6 +225,56 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 
 		if err := hdlr.handlers.Insert([]string{md["Method"]}, md["Path"], pth); err != nil {
 			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
+		}
+
+		if h.registerRPC {
+			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
+			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
+				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+			}
+		}
+	}
+
+	metadata, ok := options.Context.Value(handlerEndpointsKey{}).([]EndpointMetadata)
+	if !ok {
+		return hdlr
+	}
+
+	for _, md := range metadata {
+		hn := md.Name
+		var method reflect.Method
+		mname := hn[strings.Index(hn, ".")+1:]
+		for m := 0; m < tp.NumMethod(); m++ {
+			mn := tp.Method(m)
+			if mn.Name != mname {
+				continue
+			}
+			method = mn
+			break
+		}
+
+		if method.Name == "" && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "nil method for %s", mname)
+			continue
+		}
+
+		mtype, err := prepareEndpoint(method)
+		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
+			h.opts.Logger.Errorf(h.opts.Context, "%v", err)
+			continue
+		} else if mtype == nil {
+			h.opts.Logger.Errorf(h.opts.Context, "nil mtype for %s", mname)
+			continue
+		}
+
+		rcvr := reflect.ValueOf(handler)
+		name := reflect.Indirect(rcvr).Type().Name()
+
+		pth := &patHandler{mtype: mtype, name: name, rcvr: rcvr}
+		hdlr.name = name
+
+		if err := hdlr.handlers.Insert([]string{md.Method}, md.Path, pth); err != nil {
+			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md.Method, md.Path)
 		}
 
 		if h.registerRPC {
@@ -342,6 +391,7 @@ func (h *httpServer) Register() error {
 		}
 		opts = append(opts, broker.SubscribeContext(subCtx))
 		opts = append(opts, broker.SubscribeAutoAck(sb.Options().AutoAck))
+		opts = append(opts, broker.SubscribeBodyOnly(sb.Options().BodyOnly))
 
 		sub, err := config.Broker.Subscribe(subCtx, sb.Topic(), handler, opts...)
 		if err != nil {
@@ -602,11 +652,15 @@ func (h *httpServer) Name() string {
 
 func NewServer(opts ...server.Option) *httpServer {
 	options := server.NewOptions(opts...)
+	eh := DefaultErrorHandler
+	if v, ok := options.Context.Value(errorHandlerKey{}).(errorHandler); ok && v != nil {
+		eh = v
+	}
 	return &httpServer{
 		opts:         options,
 		exit:         make(chan chan error),
 		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),
-		errorHandler: DefaultErrorHandler,
+		errorHandler: eh,
 		pathHandlers: rhttp.NewTrie(),
 	}
 }

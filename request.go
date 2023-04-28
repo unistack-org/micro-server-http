@@ -3,9 +3,9 @@ package http
 import (
 	"io"
 
-	"go.unistack.org/micro/v3/codec"
-	"go.unistack.org/micro/v3/metadata"
-	"go.unistack.org/micro/v3/server"
+	"go.unistack.org/micro/v4/codec"
+	"go.unistack.org/micro/v4/metadata"
+	"go.unistack.org/micro/v4/server"
 )
 
 var (
@@ -22,7 +22,6 @@ type rpcRequest struct {
 	endpoint    string
 	contentType string
 	service     string
-	body        []byte
 	stream      bool
 }
 
@@ -32,7 +31,6 @@ type rpcMessage struct {
 	header      metadata.Metadata
 	topic       string
 	contentType string
-	body        []byte
 }
 
 func (r *rpcRequest) ContentType() string {
@@ -83,16 +81,12 @@ func (r *rpcMessage) Topic() string {
 	return r.topic
 }
 
-func (r *rpcMessage) Payload() interface{} {
+func (r *rpcMessage) Body() interface{} {
 	return r.payload
 }
 
 func (r *rpcMessage) Header() metadata.Metadata {
 	return r.header
-}
-
-func (r *rpcMessage) Body() []byte {
-	return r.body
 }
 
 func (r *rpcMessage) Codec() codec.Codec {
