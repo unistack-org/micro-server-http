@@ -1,5 +1,5 @@
 // Package http implements a go-micro.Server
-package http // import "go.unistack.org/micro-server-http/v3"
+package http // import "go.unistack.org/micro-server-http/v4"
 
 import (
 	"context"
@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"go.unistack.org/micro/v3/broker"
-	"go.unistack.org/micro/v3/codec"
-	"go.unistack.org/micro/v3/logger"
-	"go.unistack.org/micro/v3/register"
-	"go.unistack.org/micro/v3/server"
-	rhttp "go.unistack.org/micro/v3/util/http"
+	"go.unistack.org/micro/v4/broker"
+	"go.unistack.org/micro/v4/codec"
+	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/register"
+	"go.unistack.org/micro/v4/server"
+	rhttp "go.unistack.org/micro/v4/util/http"
 	"golang.org/x/net/netutil"
 )
 

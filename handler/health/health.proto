@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package micro.server.http.v3.handler.health;
-option go_package = "go.unistack.org/micro-server-http/v3/handler/health;health";
+package micro.server.http.v4.handler.health;
+option go_package = "go.unistack.org/micro-server-http/v4/handler/health;health";
 
 import "api/annotations.proto";
 import "openapiv3/annotations.proto";

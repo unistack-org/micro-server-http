@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package micro.server.http.v3.handler.meter;
-option go_package = "go.unistack.org/micro-server-http/v3/handler/meter;meter";
+package micro.server.http.v4.handler.meter;
+option go_package = "go.unistack.org/micro-server-http/v4/handler/meter;meter";
 
 import "api/annotations.proto";
 import "openapiv3/annotations.proto";

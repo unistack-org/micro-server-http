@@ -9,13 +9,13 @@ import (
 	"strings"
 	"sync"
 
-	"go.unistack.org/micro/v3/errors"
-	"go.unistack.org/micro/v3/logger"
-	"go.unistack.org/micro/v3/metadata"
-	"go.unistack.org/micro/v3/register"
-	"go.unistack.org/micro/v3/server"
-	rhttp "go.unistack.org/micro/v3/util/http"
-	rflutil "go.unistack.org/micro/v3/util/reflect"
+	"go.unistack.org/micro/v4/errors"
+	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/metadata"
+	"go.unistack.org/micro/v4/register"
+	"go.unistack.org/micro/v4/server"
+	rhttp "go.unistack.org/micro/v4/util/http"
+	rflutil "go.unistack.org/micro/v4/util/reflect"
 )
 
 var (

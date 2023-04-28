@@ -1,12 +1,12 @@
-package meter // import "go.unistack.org/micro-server-http/v3/handler/meter"
+package meter // import "go.unistack.org/micro-server-http/v4/handler/meter"
 
 import (
 	"bytes"
 	"context"
 
-	codecpb "go.unistack.org/micro-proto/v3/codec"
-	"go.unistack.org/micro/v3/errors"
-	"go.unistack.org/micro/v3/meter"
+	codecpb "go.unistack.org/micro-proto/v4/codec"
+	"go.unistack.org/micro/v4/errors"
+	"go.unistack.org/micro/v4/meter"
 )
 
 // guard to fail early

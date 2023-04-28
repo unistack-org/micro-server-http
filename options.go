@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.unistack.org/micro/v3/server"
+	"go.unistack.org/micro/v4/server"
 )
 
 // SetError pass error to caller
