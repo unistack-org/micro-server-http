@@ -10,7 +10,7 @@ import (
 )
 
 // guard to fail early
-var _ MeterServiceServer = &Handler{}
+var _ MeterServiceServer = (*Handler)(nil)
 
 type Handler struct {
 	opts Options
