@@ -8,10 +8,7 @@ import (
 	"go.unistack.org/micro/v4/server"
 )
 
-var (
-	_ server.Request = &rpcRequest{}
-	_ server.Message = &rpcMessage{}
-)
+var _ server.Request = &rpcRequest{}
 
 type rpcRequest struct {
 	rw          io.ReadWriter
@@ -23,14 +20,6 @@ type rpcRequest struct {
 	contentType string
 	service     string
 	stream      bool
-}
-
-type rpcMessage struct {
-	payload     interface{}
-	codec       codec.Codec
-	header      metadata.Metadata
-	topic       string
-	contentType string
 }
 
 func (r *rpcRequest) ContentType() string {
@@ -71,24 +60,4 @@ func (r *rpcRequest) Stream() bool {
 
 func (r *rpcRequest) Body() interface{} {
 	return r.payload
-}
-
-func (r *rpcMessage) ContentType() string {
-	return r.contentType
-}
-
-func (r *rpcMessage) Topic() string {
-	return r.topic
-}
-
-func (r *rpcMessage) Body() interface{} {
-	return r.payload
-}
-
-func (r *rpcMessage) Header() metadata.Metadata {
-	return r.header
-}
-
-func (r *rpcMessage) Codec() codec.Codec {
-	return r.codec
 }
