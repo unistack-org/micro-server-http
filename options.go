@@ -85,8 +85,8 @@ func Middleware(mw ...func(http.Handler) http.Handler) server.Option {
 
 type serverKey struct{}
 
-// Server provide ability to pass *http.Server
-func Server(hs *http.Server) server.Option {
+// HTTPServer provide ability to pass *http.Server
+func HTTPServer(hs *http.Server) server.Option {
 	return server.SetOption(serverKey{}, hs)
 }
 

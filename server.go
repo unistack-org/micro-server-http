@@ -10,6 +10,8 @@ import (
 	"go.unistack.org/micro/v4/server"
 )
 
+var typeOfError = reflect.TypeOf((*error)(nil)).Elem()
+
 type methodType struct {
 	ArgType     reflect.Type
 	ReplyType   reflect.Type
