@@ -101,7 +101,7 @@ func newSubscriber(topic string, sub interface{}, opts ...server.SubscriberOptio
 	}
 }
 
-func (s *httpServer) createSubHandler(sb *httpSubscriber, opts server.Options) broker.Handler {
+func (s *Server) createSubHandler(sb *httpSubscriber, opts server.Options) broker.Handler {
 	return func(p broker.Event) error {
 		msg := p.Message()
 		ct := msg.Header["Content-Type"]

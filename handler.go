@@ -60,7 +60,7 @@ func (h *httpHandler) Options() server.HandlerOptions {
 	return h.opts
 }
 
-func (h *httpServer) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) {
+func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) {
 	if handler == nil {
 		return nil, fmt.Errorf("invalid handler specified: %v", handler)
 	}
@@ -333,7 +333,7 @@ func (h *httpServer) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, err
 	}, nil
 }
 
-func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// check for http.HandlerFunc handlers
 	if ph, _, err := h.pathHandlers.Search(r.Method, r.URL.Path); err == nil {
 		ph.(http.HandlerFunc)(w, r)
