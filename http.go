@@ -23,9 +23,9 @@ import (
 	"golang.org/x/net/netutil"
 )
 
-var _ server.Server = &httpServer{}
+var _ server.Server = (*Server)(nil)
 
-type httpServer struct {
+type Server struct {
 	hd           server.Handler
 	rsvc         *register.Service
 	handlers     map[string]server.Handler
@@ -40,7 +40,7 @@ type httpServer struct {
 	init       bool
 }
 
-func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
+func (h *Server) newCodec(ct string) (codec.Codec, error) {
 	if idx := strings.IndexRune(ct, ';'); idx >= 0 {
 		ct = ct[:idx]
 	}
@@ -53,14 +53,14 @@ func (h *httpServer) newCodec(ct string) (codec.Codec, error) {
 	return nil, codec.ErrUnknownContentType
 }
 
-func (h *httpServer) Options() server.Options {
+func (h *Server) Options() server.Options {
 	h.Lock()
 	opts := h.opts
 	h.Unlock()
 	return opts
 }
 
-func (h *httpServer) Init(opts ...server.Option) error {
+func (h *Server) Init(opts ...server.Option) error {
 	if len(opts) == 0 && h.init {
 		return nil
 	}
@@ -130,7 +130,7 @@ func (h *httpServer) Init(opts ...server.Option) error {
 	return nil
 }
 
-func (h *httpServer) Handle(handler server.Handler) error {
+func (h *Server) Handle(handler server.Handler) error {
 	// passed unknown handler
 	hdlr, ok := handler.(*httpHandler)
 	if !ok {
@@ -159,7 +159,7 @@ func (h *httpServer) Handle(handler server.Handler) error {
 	return nil
 }
 
-func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOption) server.Handler {
+func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) server.Handler {
 	options := server.NewHandlerOptions(opts...)
 
 	eps := make([]*register.Endpoint, 0, len(options.Metadata))
@@ -288,11 +288,11 @@ func (h *httpServer) NewHandler(handler interface{}, opts ...server.HandlerOptio
 	return hdlr
 }
 
-func (h *httpServer) NewSubscriber(topic string, handler interface{}, opts ...server.SubscriberOption) server.Subscriber {
+func (h *Server) NewSubscriber(topic string, handler interface{}, opts ...server.SubscriberOption) server.Subscriber {
 	return newSubscriber(topic, handler, opts...)
 }
 
-func (h *httpServer) Subscribe(sb server.Subscriber) error {
+func (h *Server) Subscribe(sb server.Subscriber) error {
 	sub, ok := sb.(*httpSubscriber)
 	if !ok {
 		return fmt.Errorf("invalid subscriber: expected *httpSubscriber")
@@ -317,7 +317,7 @@ func (h *httpServer) Subscribe(sb server.Subscriber) error {
 	return nil
 }
 
-func (h *httpServer) Register() error {
+func (h *Server) Register() error {
 	var eps []*register.Endpoint
 	h.RLock()
 	for _, hdlr := range h.handlers {
@@ -408,7 +408,7 @@ func (h *httpServer) Register() error {
 	return nil
 }
 
-func (h *httpServer) Deregister() error {
+func (h *Server) Deregister() error {
 	h.RLock()
 	config := h.opts
 	h.RUnlock()
@@ -456,7 +456,7 @@ func (h *httpServer) Deregister() error {
 	return nil
 }
 
-func (h *httpServer) Start() error {
+func (h *Server) Start() error {
 	h.RLock()
 	config := h.opts
 	h.RUnlock()
@@ -636,27 +636,27 @@ func (h *httpServer) Start() error {
 	return nil
 }
 
-func (h *httpServer) Stop() error {
+func (h *Server) Stop() error {
 	ch := make(chan error)
 	h.exit <- ch
 	return <-ch
 }
 
-func (h *httpServer) String() string {
+func (h *Server) String() string {
 	return "http"
 }
 
-func (h *httpServer) Name() string {
+func (h *Server) Name() string {
 	return h.opts.Name
 }
 
-func NewServer(opts ...server.Option) *httpServer {
+func NewServer(opts ...server.Option) *Server {
 	options := server.NewOptions(opts...)
 	eh := DefaultErrorHandler
 	if v, ok := options.Context.Value(errorHandlerKey{}).(errorHandler); ok && v != nil {
 		eh = v
 	}
-	return &httpServer{
+	return &Server{
 		opts:         options,
 		exit:         make(chan chan error),
 		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),
