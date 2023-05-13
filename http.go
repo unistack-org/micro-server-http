@@ -378,6 +378,17 @@ func (h *Server) Register() error {
 	}
 
 	h.Lock()
+
+	h.registered = true
+	h.rsvc = service
+	h.Unlock()
+
+	return nil
+}
+
+func (h *Server) subscribe() error {
+	config := h.opts
+
 	for sb := range h.subscribers {
 		handler := h.createSubHandler(sb, config)
 		var opts []broker.SubscribeOption
@@ -400,10 +411,6 @@ func (h *Server) Register() error {
 		}
 		h.subscribers[sb] = []broker.Subscriber{sub}
 	}
-
-	h.registered = true
-	h.rsvc = service
-	h.Unlock()
 
 	return nil
 }
@@ -537,6 +544,10 @@ func (h *Server) Start() error {
 		if err = h.Register(); err != nil {
 			return err
 		}
+	}
+
+	if err := h.subscribe(); err != nil {
+		return err
 	}
 
 	fn := handler
