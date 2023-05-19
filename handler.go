@@ -349,11 +349,18 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		md[k] = strings.Join(v, ", ")
 	}
 	md["RemoteAddr"] = r.RemoteAddr
+	if r.TLS != nil {
+		md["Scheme"] = "https"
+	} else {
+		md["Scheme"] = "http"
+	}
 	md["Method"] = r.Method
 	md["URL"] = r.URL.String()
 	md["Proto"] = r.Proto
 	md["ContentLength"] = fmt.Sprintf("%d", r.ContentLength)
-	md["TransferEncoding"] = strings.Join(r.TransferEncoding, ",")
+	if len(r.TransferEncoding) > 0 {
+		md["TransferEncoding"] = strings.Join(r.TransferEncoding, ",")
+	}
 	md["Host"] = r.Host
 	md["RequestURI"] = r.RequestURI
 	ctx = metadata.NewIncomingContext(ctx, md)
