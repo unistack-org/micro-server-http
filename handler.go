@@ -334,12 +334,6 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 }
 
 func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// check for http.HandlerFunc handlers
-	if ph, _, err := h.pathHandlers.Search(r.Method, r.URL.Path); err == nil {
-		ph.(http.HandlerFunc)(w, r)
-		return
-	}
-
 	ct := DefaultContentType
 	if htype := r.Header.Get(metadata.HeaderContentType); htype != "" {
 		ct = htype
@@ -363,10 +357,6 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	md["Host"] = r.Host
 	md["RequestURI"] = r.RequestURI
 	ctx = metadata.NewIncomingContext(ctx, md)
-
-	if r.Body != nil {
-		defer r.Body.Close()
-	}
 
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/") {
@@ -424,6 +414,11 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if !match {
+		// check for http.HandlerFunc handlers
+		if ph, _, err := h.pathHandlers.Search(r.Method, r.URL.Path); err == nil {
+			ph.(http.HandlerFunc)(w, r)
+			return
+		}
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusNotFound)
 		return
 	}
@@ -438,6 +433,10 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for k, v := range umd {
 			matches[k] = v
 		}
+	}
+
+	if r.Body != nil {
+		defer r.Body.Close()
 	}
 
 	cf, err := h.newCodec(ct)
