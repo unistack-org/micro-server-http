@@ -487,10 +487,12 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	matches = rflutil.FlattenMap(matches)
-	if err = rflutil.Merge(argv.Interface(), matches, rflutil.SliceAppend(true), rflutil.Tags([]string{"protobuf", "json"})); err != nil {
-		h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
-		return
+	if len(matches) > 0 {
+		matches = rflutil.FlattenMap(matches)
+		if err = rflutil.Merge(argv.Interface(), matches, rflutil.SliceAppend(true), rflutil.Tags([]string{"protobuf", "json"})); err != nil {
+			h.errorHandler(ctx, handler, w, r, err, http.StatusBadRequest)
+			return
+		}
 	}
 
 	hr := &rpcRequest{
