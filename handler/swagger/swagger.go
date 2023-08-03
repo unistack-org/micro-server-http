@@ -1,18 +1,24 @@
-package swagger
+package swagger // import "go.unistack.org/micro-server-http/v4/handler/swagger"
 
 import (
+	"context"
 	"io/fs"
 	"net/http"
 
-	yamlcodec "go.unistack.org/micro-codec-yaml/v3"
-	rutil "go.unistack.org/micro/v3/util/reflect"
+	httpsrv "go.unistack.org/micro-server-http/v4"
+	"go.unistack.org/micro/v4/server"
+)
+
+type (
+	Hook         func([]byte) []byte
+	ErrorHandler func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)
 )
 
 // Handler append to generated swagger data from dst map[string]interface{}
-var Handler = func(dst map[string]interface{}, fsys fs.FS) http.HandlerFunc {
-	c := yamlcodec.NewCodec()
+var Handler = func(fsys fs.FS, hooks []Hook, h httpsrv.ErrorHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
+			h(r.Context())
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -24,26 +30,6 @@ var Handler = func(dst map[string]interface{}, fsys fs.FS) http.HandlerFunc {
 
 		buf, err := fs.ReadFile(fsys, path)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-
-		var src interface{}
-
-		if err = c.Unmarshal(buf, src); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-
-		if err = rutil.Merge(src, dst); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-
-		if buf, err = c.Marshal(src); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(err.Error()))
 			return
