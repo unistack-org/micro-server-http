@@ -120,6 +120,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		md["Host"] = r.Host
 		md["RequestURI"] = r.RequestURI
 		if r.TLS != nil {
+			md["TLS"] = "true"
 			md["TLS_ALPN"] = r.TLS.NegotiatedProtocol
 			md["TLS_ServerName"] = r.TLS.ServerName
 		}
