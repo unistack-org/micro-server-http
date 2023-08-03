@@ -119,6 +119,11 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		md["TransferEncoding"] = strings.Join(r.TransferEncoding, ",")
 		md["Host"] = r.Host
 		md["RequestURI"] = r.RequestURI
+		if r.TLS != nil {
+			md["TLS_ALPN"] = r.TLS.NegotiatedProtocol
+			md["TLS_ServerName"] = r.TLS.ServerName
+		}
+
 		ctx = metadata.NewIncomingContext(ctx, md)
 
 		path := r.URL.Path
