@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	DefaultErrorHandler = func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int) {
+	DefaultErrorHandler = func(ctx context.Context, s interface{}, w http.ResponseWriter, r *http.Request, err error, status int) {
 		w.WriteHeader(status)
 		if _, cerr := w.Write([]byte(err.Error())); cerr != nil {
 			logger.DefaultLogger.Errorf(ctx, "write failed: %v", cerr)
@@ -35,7 +35,7 @@ type patHandler struct {
 }
 
 type httpHandler struct {
-	opts     server.HandlerOptions
+	opts     server.HandleOptions
 	hd       interface{}
 	handlers *rhttp.Trie
 	name     string
@@ -56,7 +56,7 @@ func (h *httpHandler) Endpoints() []*register.Endpoint {
 	return h.eps
 }
 
-func (h *httpHandler) Options() server.HandlerOptions {
+func (h *httpHandler) Options() server.HandleOptions {
 	return h.opts
 }
 
@@ -266,9 +266,9 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		// wrap the handler func
-		for i := len(handler.sopts.HdlrWrappers); i > 0; i-- {
-			fn = handler.sopts.HdlrWrappers[i-1](fn)
-		}
+		// for i := len(handler.sopts.Hooks); i > 0; i-- {
+		//	fn = handler.sopts.Hooks[i-1](fn)
+		// }
 
 		if ct == "application/x-www-form-urlencoded" {
 			cf, err = h.newCodec(DefaultContentType)
@@ -416,7 +416,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !match && h.hd != nil {
-		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
+		if hdlr, ok := h.hd.(http.Handler); ok {
 			hdlr.ServeHTTP(w, r)
 			return
 		}
@@ -529,9 +529,9 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// wrap the handler func
-	for i := len(handler.sopts.HdlrWrappers); i > 0; i-- {
-		fn = handler.sopts.HdlrWrappers[i-1](fn)
-	}
+	// for i := len(handler.sopts.HdlrWrappers); i > 0; i-- {
+	//	fn = handler.sopts.HdlrWrappers[i-1](fn)
+	// }
 
 	if ct == "application/x-www-form-urlencoded" {
 		cf, err = h.newCodec(DefaultContentType)

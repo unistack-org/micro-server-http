@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.unistack.org/micro/v4/server"
+	"go.unistack.org/micro/v4/options"
 )
 
 // SetError pass error to caller
@@ -79,24 +79,24 @@ func GetRspCode(ctx context.Context) int {
 type middlewareKey struct{}
 
 // Middleware passes http middlewares
-func Middleware(mw ...func(http.Handler) http.Handler) server.Option {
-	return server.SetOption(middlewareKey{}, mw)
+func Middleware(mw ...func(http.Handler) http.Handler) options.Option {
+	return options.ContextOption(middlewareKey{}, mw)
 }
 
 type serverKey struct{}
 
 // HTTPServer provide ability to pass *http.Server
-func HTTPServer(hs *http.Server) server.Option {
-	return server.SetOption(serverKey{}, hs)
+func HTTPServer(hs *http.Server) options.Option {
+	return options.ContextOption(serverKey{}, hs)
 }
 
-type errorHandler func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)
+type errorHandler func(ctx context.Context, s interface{}, w http.ResponseWriter, r *http.Request, err error, status int)
 
 type errorHandlerKey struct{}
 
 // ErrorHandler specifies handler for errors
-func ErrorHandler(fn errorHandler) server.Option {
-	return server.SetOption(errorHandlerKey{}, fn)
+func ErrorHandler(fn errorHandler) options.Option {
+	return options.ContextOption(errorHandlerKey{}, fn)
 }
 
 type (
@@ -107,12 +107,18 @@ type (
 )
 
 // PathHandler specifies http handler for path regexp
-func PathHandler(method, path string, handler http.HandlerFunc) server.Option {
-	return func(o *server.Options) {
-		if o.Context == nil {
-			o.Context = context.Background()
+func PathHandler(method, path string, handler http.HandlerFunc) options.Option {
+	return func(src interface{}) error {
+		vctx, err := options.Get(src, ".Context")
+		if err != nil {
+			return err
 		}
-		v, ok := o.Context.Value(pathHandlerKey{}).(*pathHandlerVal)
+		ctx, ok := vctx.(context.Context)
+		if !ok {
+			return fmt.Errorf("invalid option")
+		}
+
+		v, ok := ctx.Value(pathHandlerKey{}).(*pathHandlerVal)
 		if !ok {
 			v = &pathHandlerVal{h: make(map[string]map[string]http.HandlerFunc)}
 		}
@@ -121,16 +127,17 @@ func PathHandler(method, path string, handler http.HandlerFunc) server.Option {
 			m = make(map[string]http.HandlerFunc)
 			v.h[method] = m
 		}
+		ctx = context.WithValue(ctx, pathHandlerKey{}, v)
 		m[path] = handler
-		o.Context = context.WithValue(o.Context, pathHandlerKey{}, v)
+		return options.Set(src, ctx, ".Context")
 	}
 }
 
 type registerRPCHandlerKey struct{}
 
 // RegisterRPCHandler registers compatibility endpoints with /ServiceName.ServiceEndpoint method POST
-func RegisterRPCHandler(b bool) server.Option {
-	return server.SetOption(registerRPCHandlerKey{}, b)
+func RegisterRPCHandler(b bool) options.Option {
+	return options.ContextOption(registerRPCHandlerKey{}, b)
 }
 
 type handlerEndpointsKey struct{}
@@ -143,8 +150,8 @@ type EndpointMetadata struct {
 	Stream bool
 }
 
-func HandlerEndpoints(md []EndpointMetadata) server.HandlerOption {
-	return server.SetHandlerOption(handlerEndpointsKey{}, md)
+func HandlerEndpoints(md []EndpointMetadata) options.Option {
+	return options.ContextOption(handlerEndpointsKey{}, md)
 }
 
 type handlerOptions struct {
