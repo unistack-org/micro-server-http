@@ -15,6 +15,7 @@ import (
 
 	"go.unistack.org/micro/v4/codec"
 	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/options"
 	"go.unistack.org/micro/v4/register"
 	"go.unistack.org/micro/v4/server"
 	rhttp "go.unistack.org/micro/v4/util/http"
@@ -24,11 +25,11 @@ import (
 var _ server.Server = (*Server)(nil)
 
 type Server struct {
-	hd           server.Handler
+	hd           interface{}
 	rsvc         *register.Service
-	handlers     map[string]server.Handler
+	handlers     map[string]interface{}
 	exit         chan chan error
-	errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
+	errorHandler func(context.Context, interface{}, http.ResponseWriter, *http.Request, error, int)
 	pathHandlers *rhttp.Trie
 	opts         server.Options
 	registerRPC  bool
@@ -57,7 +58,7 @@ func (h *Server) Options() server.Options {
 	return opts
 }
 
-func (h *Server) Init(opts ...server.Option) error {
+func (h *Server) Init(opts ...options.Option) error {
 	if len(opts) == 0 && h.init {
 		return nil
 	}
@@ -67,11 +68,11 @@ func (h *Server) Init(opts ...server.Option) error {
 	for _, o := range opts {
 		o(&h.opts)
 	}
-	if fn, ok := h.opts.Context.Value(errorHandlerKey{}).(func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int)); ok && fn != nil {
+	if fn, ok := h.opts.Context.Value(errorHandlerKey{}).(func(ctx context.Context, s interface{}, w http.ResponseWriter, r *http.Request, err error, status int)); ok && fn != nil {
 		h.errorHandler = fn
 	}
 	if h.handlers == nil {
-		h.handlers = make(map[string]server.Handler)
+		h.handlers = make(map[string]interface{})
 	}
 	if h.pathHandlers == nil {
 		h.pathHandlers = rhttp.NewTrie()
@@ -110,10 +111,6 @@ func (h *Server) Init(opts ...server.Option) error {
 		h.RUnlock()
 		return err
 	}
-	if err := h.opts.Transport.Init(); err != nil {
-		h.RUnlock()
-		return err
-	}
 	h.RUnlock()
 
 	h.Lock()
@@ -123,7 +120,9 @@ func (h *Server) Init(opts ...server.Option) error {
 	return nil
 }
 
-func (h *Server) Handle(handler server.Handler) error {
+func (h *Server) Handle(handler interface{}, opts ...options.Option) error {
+	options := server.NewHandleOptions(opts...)
+
 	// passed unknown handler
 	hdlr, ok := handler.(*httpHandler)
 	if !ok {
@@ -144,16 +143,18 @@ func (h *Server) Handle(handler server.Handler) error {
 	// passed micro compat handler
 	h.Lock()
 	if h.handlers == nil {
-		h.handlers = make(map[string]server.Handler)
+		h.handlers = make(map[string]interface{})
 	}
-	h.handlers[handler.Name()] = handler
+	for k := range options.Metadata {
+		h.handlers[k] = handler
+	}
 	h.Unlock()
 
 	return nil
 }
 
-func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) server.Handler {
-	options := server.NewHandlerOptions(opts...)
+func (h *Server) newHTTPHandler(handler interface{}, opts ...options.Option) *httpHandler {
+	options := server.NewHandleOptions(opts...)
 
 	eps := make([]*register.Endpoint, 0, len(options.Metadata))
 	for name, metadata := range options.Metadata {
@@ -285,7 +286,11 @@ func (h *Server) Register() error {
 	var eps []*register.Endpoint
 	h.RLock()
 	for _, hdlr := range h.handlers {
-		eps = append(eps, hdlr.Endpoints()...)
+		hd, ok := hdlr.(*httpHandler)
+		if !ok {
+			continue
+		}
+		eps = append(eps, hd.Endpoints()...)
 	}
 	rsvc := h.rsvc
 	config := h.opts
@@ -409,7 +414,7 @@ func (h *Server) Start() error {
 	if h.opts.Context != nil {
 		if hs, ok := h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
 			if hs.Handler == nil && h.hd != nil {
-				if hdlr, ok := h.hd.Handler().(http.Handler); ok {
+				if hdlr, ok := h.hd.(http.Handler); ok {
 					hs.Handler = hdlr
 					handler = hs.Handler
 				}
@@ -425,7 +430,7 @@ func (h *Server) Start() error {
 	case len(h.handlers) > 0 && h.hd != nil:
 		handler = h
 	case handler == nil && h.hd != nil:
-		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
+		if hdlr, ok := h.hd.(http.Handler); ok {
 			handler = hdlr
 		}
 	}
@@ -551,7 +556,7 @@ func (h *Server) Name() string {
 	return h.opts.Name
 }
 
-func NewServer(opts ...server.Option) *Server {
+func NewServer(opts ...options.Option) *Server {
 	options := server.NewOptions(opts...)
 	eh := DefaultErrorHandler
 	if v, ok := options.Context.Value(errorHandlerKey{}).(errorHandler); ok && v != nil {

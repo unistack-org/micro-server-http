@@ -4,8 +4,8 @@ import (
 	"io/fs"
 	"net/http"
 
-	yamlcodec "go.unistack.org/micro-codec-yaml/v3"
-	rutil "go.unistack.org/micro/v3/util/reflect"
+	yamlcodec "go.unistack.org/micro-codec-yaml/v4"
+	rutil "go.unistack.org/micro/v4/util/reflect"
 )
 
 // Handler append to generated swagger data from dst map[string]interface{}
