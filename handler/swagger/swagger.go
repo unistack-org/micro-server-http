@@ -32,6 +32,7 @@ var Handler = func(dst map[string]interface{}, fsys fs.FS) http.HandlerFunc {
 		if dst == nil {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(buf)
+			return
 		}
 
 		var src interface{}
