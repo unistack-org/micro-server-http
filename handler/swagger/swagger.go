@@ -29,6 +29,11 @@ var Handler = func(dst map[string]interface{}, fsys fs.FS) http.HandlerFunc {
 			return
 		}
 
+		if dst == nil {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(buf)
+		}
+
 		var src interface{}
 
 		if err = c.Unmarshal(buf, src); err != nil {
