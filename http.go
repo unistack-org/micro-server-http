@@ -122,12 +122,22 @@ func (h *Server) Init(opts ...options.Option) error {
 
 func (h *Server) Handle(handler interface{}, opts ...options.Option) error {
 	options := server.NewHandleOptions(opts...)
+	var endpointMetadata []EndpointMetadata
+
+	if v, ok := options.Context.Value(handlerEndpointsKey{}).([]EndpointMetadata); ok {
+		endpointMetadata = v
+	}
 
 	// passed unknown handler
 	hdlr, ok := handler.(*httpHandler)
 	if !ok {
 		h.Lock()
-		h.hd = handler
+		if h.handlers == nil {
+			h.handlers = make(map[string]interface{})
+		}
+		for _, v := range endpointMetadata {
+			h.handlers[v.Name] = h.newHTTPHandler(handler, opts...)
+		}
 		h.Unlock()
 		return nil
 	}
@@ -139,16 +149,6 @@ func (h *Server) Handle(handler interface{}, opts ...options.Option) error {
 		h.Unlock()
 		return nil
 	}
-
-	// passed micro compat handler
-	h.Lock()
-	if h.handlers == nil {
-		h.handlers = make(map[string]interface{})
-	}
-	for k := range options.Metadata {
-		h.handlers[k] = handler
-	}
-	h.Unlock()
 
 	return nil
 }
