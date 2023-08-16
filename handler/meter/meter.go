@@ -7,6 +7,7 @@ import (
 	codecpb "go.unistack.org/micro-proto/v4/codec"
 	"go.unistack.org/micro/v4/errors"
 	"go.unistack.org/micro/v4/meter"
+	options "go.unistack.org/micro/v4/options"
 )
 
 // guard to fail early
@@ -21,7 +22,7 @@ type Option func(*Options)
 type Options struct {
 	Meter        meter.Meter
 	Name         string
-	MeterOptions []meter.Option
+	MeterOptions []options.Option
 }
 
 func Meter(m meter.Meter) Option {
@@ -36,7 +37,7 @@ func Name(name string) Option {
 	}
 }
 
-func MeterOptions(opts ...meter.Option) Option {
+func MeterOptions(opts ...options.Option) Option {
 	return func(o *Options) {
 		o.MeterOptions = append(o.MeterOptions, opts...)
 	}
