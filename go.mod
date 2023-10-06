@@ -5,7 +5,7 @@ go 1.18
 require (
 	go.unistack.org/micro-proto/v3 v3.3.1
 	go.unistack.org/micro/v3 v3.10.28
-	golang.org/x/net v0.14.0
+	golang.org/x/net v0.16.0
 )
 
 require (
