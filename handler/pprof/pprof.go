@@ -9,10 +9,6 @@ import (
 )
 
 func NewHandler(prefixPath string, initFuncs ...func()) http.HandlerFunc {
-	if prefixPath == "" {
-		prefixPath = "/pprof"
-	}
-
 	for _, fn := range initFuncs {
 		fn()
 	}
