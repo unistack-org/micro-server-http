@@ -15,7 +15,7 @@ func NewHandler(prefixPath string, initFuncs ...func()) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case strings.EqualFold(r.RequestURI, prefixPath) && r.RequestURI[len(r.RequestURI)] != '/':
+		case strings.EqualFold(r.RequestURI, prefixPath) && r.RequestURI[len(r.RequestURI)-1] != '/':
 			http.Redirect(w, r, r.RequestURI+"/", http.StatusMovedPermanently)
 		case strings.HasPrefix(r.RequestURI, path.Join(prefixPath, "cmdline")):
 			pprof.Cmdline(w, r)
