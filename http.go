@@ -549,10 +549,9 @@ func (h *Server) Start() error {
 			config.Logger.Errorf(config.Context, "Server deregister error: %s", err)
 		}
 
-		// err ignore and empty cotnext
-		hs.Shutdown(context.Background())
-
-		ch <- ts.Close()
+		//  empty context
+		// TODO ts.Listener is sopped?
+		ch <- hs.Shutdown(context.Background())
 	}()
 
 	return nil
