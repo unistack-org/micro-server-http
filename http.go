@@ -408,7 +408,6 @@ func (h *Server) Start() error {
 	h.Unlock()
 
 	var handler http.Handler
-	//var srvFunc func(net.Listener) error
 
 	// nolint: nestif
 	if h.opts.Context != nil {
@@ -462,7 +461,6 @@ func (h *Server) Start() error {
 		var ok bool
 		if hs, ok = h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
 			hs.Handler = fn
-			//srvFunc = hs.Serve
 		} else {
 			hs = &http.Server{Handler: fn}
 		}
@@ -473,23 +471,6 @@ func (h *Server) Start() error {
 			h.opts.Logger.Error(h.opts.Context, cerr)
 		}
 	}()
-
-	/*
-		if srvFunc != nil {
-			go func() {
-				if cerr := srvFunc(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-					h.opts.Logger.Error(h.opts.Context, cerr)
-				}
-			}()
-		} else {
-			go func() {
-				if cerr := http.Serve(ts, fn); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-					h.opts.Logger.Error(h.opts.Context, cerr)
-				}
-			}()
-		}
-
-	*/
 
 	go func() {
 		t := new(time.Ticker)
