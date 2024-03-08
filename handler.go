@@ -22,7 +22,7 @@ var (
 	DefaultErrorHandler = func(ctx context.Context, s interface{}, w http.ResponseWriter, r *http.Request, err error, status int) {
 		w.WriteHeader(status)
 		if _, cerr := w.Write([]byte(err.Error())); cerr != nil {
-			logger.DefaultLogger.Errorf(ctx, "write failed: %v", cerr)
+			logger.DefaultLogger.Error(ctx, fmt.Sprintf("write failed: %v", cerr))
 		}
 	}
 	DefaultContentType = "application/json"
@@ -318,7 +318,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		if err != nil && handler.sopts.Logger.V(logger.ErrorLevel) {
-			handler.sopts.Logger.Errorf(handler.sopts.Context, "handler err: %v", err)
+			handler.sopts.Logger.Error(handler.sopts.Context, fmt.Sprintf("handler err: %v", err))
 			return
 		}
 
@@ -328,7 +328,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		w.WriteHeader(scode)
 
 		if _, cerr := w.Write(buf); cerr != nil {
-			handler.sopts.Logger.Errorf(ctx, "write failed: %v", cerr)
+			handler.sopts.Logger.Error(ctx, fmt.Sprintf("write failed: %v", cerr))
 		}
 	}, nil
 }
@@ -581,7 +581,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil && handler.sopts.Logger.V(logger.ErrorLevel) {
-		handler.sopts.Logger.Errorf(handler.sopts.Context, "handler err: %v", err)
+		handler.sopts.Logger.Error(handler.sopts.Context, fmt.Sprintf("handler err: %v", err))
 		return
 	}
 
@@ -591,6 +591,6 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(scode)
 
 	if _, cerr := w.Write(buf); cerr != nil {
-		handler.sopts.Logger.Errorf(ctx, "write failed: %v", cerr)
+		handler.sopts.Logger.Error(ctx, fmt.Sprintf("write failed: %v", cerr))
 	}
 }
