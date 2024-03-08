@@ -198,16 +198,16 @@ func (h *Server) newHTTPHandler(handler interface{}, opts ...options.Option) *ht
 		}
 
 		if method.Name == "" && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "nil method for %s", mname)
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("nil method for %s", mname))
 			continue
 		}
 
 		mtype, err := prepareEndpoint(method)
 		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "%v", err)
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("%v", err))
 			continue
 		} else if mtype == nil {
-			h.opts.Logger.Errorf(h.opts.Context, "nil mtype for %s", mname)
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("nil mtype for %s", mname))
 			continue
 		}
 
@@ -218,13 +218,13 @@ func (h *Server) newHTTPHandler(handler interface{}, opts ...options.Option) *ht
 		hdlr.name = name
 
 		if err := hdlr.handlers.Insert([]string{md["Method"]}, md["Path"], pth); err != nil {
-			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add handler for %s %s", md["Method"], md["Path"]))
 		}
 
 		if h.registerRPC {
-			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
+			h.opts.Logger.Info(h.opts.Context, fmt.Sprintf("register rpc handler for http.MethodPost %s /%s", hn, hn))
 			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
-				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+				h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add rpc handler for http.MethodPost %s /%s", hn, hn))
 			}
 		}
 	}
@@ -248,16 +248,16 @@ func (h *Server) newHTTPHandler(handler interface{}, opts ...options.Option) *ht
 		}
 
 		if method.Name == "" && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "nil method for %s", mname)
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("nil method for %s", mname))
 			continue
 		}
 
 		mtype, err := prepareEndpoint(method)
 		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "%v", err)
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("%v", err))
 			continue
 		} else if mtype == nil {
-			h.opts.Logger.Errorf(h.opts.Context, "nil mtype for %s", mname)
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("nil mtype for %s", mname))
 			continue
 		}
 
@@ -268,13 +268,13 @@ func (h *Server) newHTTPHandler(handler interface{}, opts ...options.Option) *ht
 		hdlr.name = name
 
 		if err := hdlr.handlers.Insert([]string{md.Method}, md.Path, pth); err != nil {
-			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md.Method, md.Path)
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add handler for %s %s", md.Method, md.Path))
 		}
 
 		if h.registerRPC {
-			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
+			h.opts.Logger.Info(h.opts.Context, fmt.Sprintf("register rpc handler for http.MethodPost %s /%s", hn, hn))
 			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
-				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+				h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add rpc handler for http.MethodPost %s /%s", hn, hn))
 			}
 		}
 	}
@@ -317,7 +317,7 @@ func (h *Server) Register() error {
 
 	if !registered {
 		if config.Logger.V(logger.InfoLevel) {
-			config.Logger.Infof(config.Context, "Register [%s] Registering node: %s", config.Register.String(), service.Nodes[0].ID)
+			config.Logger.Info(config.Context, fmt.Sprintf("Register [%s] Registering node: %s", config.Register.String(), service.Nodes[0].ID))
 		}
 	}
 
@@ -350,7 +350,7 @@ func (h *Server) Deregister() error {
 	}
 
 	if config.Logger.V(logger.InfoLevel) {
-		config.Logger.Infof(config.Context, "Deregistering node: %s", service.Nodes[0].ID)
+		config.Logger.Info(config.Context, fmt.Sprintf("Deregistering node: %s", service.Nodes[0].ID))
 	}
 
 	if err := server.DefaultDeregisterFunc(service, config); err != nil {
@@ -400,7 +400,7 @@ func (h *Server) Start() error {
 	}
 
 	if config.Logger.V(logger.InfoLevel) {
-		config.Logger.Infof(config.Context, "Listening on %s", ts.Addr().String())
+		config.Logger.Info(config.Context, fmt.Sprintf("Listening on %s", ts.Addr().String()))
 	}
 
 	h.Lock()
@@ -440,7 +440,7 @@ func (h *Server) Start() error {
 
 	if err := config.RegisterCheck(h.opts.Context); err != nil {
 		if config.Logger.V(logger.ErrorLevel) {
-			config.Logger.Errorf(config.Context, "Server %s-%s register check error: %s", config.Name, config.ID, err)
+			config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register check error: %s", config.Name, config.ID, err))
 		}
 	} else {
 		if err = h.Register(); err != nil {
@@ -468,7 +468,7 @@ func (h *Server) Start() error {
 
 	go func() {
 		if cerr := hs.Serve(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-			h.opts.Logger.Error(h.opts.Context, cerr)
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprint(cerr))
 		}
 	}()
 
@@ -496,28 +496,28 @@ func (h *Server) Start() error {
 				// nolint: nestif
 				if rerr != nil && registered {
 					if config.Logger.V(logger.ErrorLevel) {
-						config.Logger.Errorf(config.Context, "Server %s-%s register check error: %s, deregister it", config.Name, config.ID, rerr)
+						config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register check error: %s, deregister it", config.Name, config.ID, rerr))
 					}
 					// deregister self in case of error
 					if err := h.Deregister(); err != nil {
 						if config.Logger.V(logger.ErrorLevel) {
-							config.Logger.Errorf(config.Context, "Server %s-%s deregister error: %s", config.Name, config.ID, err)
+							config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s deregister error: %s", config.Name, config.ID, err))
 						}
 					}
 				} else if rerr != nil && !registered {
 					if config.Logger.V(logger.ErrorLevel) {
-						config.Logger.Errorf(config.Context, "Server %s-%s register check error: %s", config.Name, config.ID, rerr)
+						config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register check error: %s", config.Name, config.ID, rerr))
 					}
 					continue
 				}
 				if err := h.Register(); err != nil {
 					if config.Logger.V(logger.ErrorLevel) {
-						config.Logger.Errorf(config.Context, "Server %s-%s register error: %s", config.Name, config.ID, err)
+						config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register error: %s", config.Name, config.ID, err))
 					}
 				}
 
 				if err := h.Register(); err != nil {
-					config.Logger.Errorf(config.Context, "Server register error: %s", err)
+					config.Logger.Error(config.Context, fmt.Sprintf("Server register error: %s", err))
 				}
 			// wait for exit
 			case ch = <-h.exit:
@@ -527,12 +527,15 @@ func (h *Server) Start() error {
 
 		// deregister
 		if err := h.Deregister(); err != nil {
-			config.Logger.Errorf(config.Context, "Server deregister error: %s", err)
+			config.Logger.Error(config.Context, fmt.Sprintf("Server deregister error: %s", err))
 		}
 
-		//  empty context
-		// TODO ts.Listener is sopped?
-		ch <- hs.Shutdown(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), h.opts.GracefulTimeout)
+		defer cancel()
+
+		if err := hs.Shutdown(ctx); err != nil {
+			ch <- hs.Close()
+		}
 	}()
 
 	return nil
