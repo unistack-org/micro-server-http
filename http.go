@@ -533,9 +533,12 @@ func (h *Server) Start() error {
 		ctx, cancel := context.WithTimeout(context.Background(), h.opts.GracefulTimeout)
 		defer cancel()
 
-		if err := hs.Shutdown(ctx); err != nil {
-			ch <- hs.Close()
+		err := hs.Shutdown(ctx)
+		if err != nil {
+			err = hs.Close()
 		}
+
+		ch <- err
 	}()
 
 	return nil
