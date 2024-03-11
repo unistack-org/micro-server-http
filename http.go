@@ -217,8 +217,8 @@ func (h *Server) newHTTPHandler(handler interface{}, opts ...options.Option) *ht
 		pth := &patHandler{mtype: mtype, name: name, rcvr: rcvr}
 		hdlr.name = name
 
-		if err := hdlr.handlers.Insert([]string{md["Method"]}, md["Path"], pth); err != nil {
-			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add handler for %s %s", md["Method"], md["Path"]))
+		if err := hdlr.handlers.Insert(md["Method"], md["Path"][0], pth); err != nil {
+			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add handler for %s %s", md["Method"][0], md["Path"][0]))
 		}
 
 		if h.registerRPC {
@@ -308,7 +308,7 @@ func (h *Server) Register() error {
 	if err != nil {
 		return err
 	}
-	service.Nodes[0].Metadata["protocol"] = "http"
+	service.Nodes[0].Metadata.Set("protocol", "http")
 	service.Endpoints = eps
 
 	h.RLock()

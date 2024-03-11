@@ -109,16 +109,22 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 			md = metadata.New(len(r.Header) + 8)
 		}
 		for k, v := range r.Header {
-			md[k] = strings.Join(v, ", ")
+			md[k] = v
 		}
-		md["RemoteAddr"] = r.RemoteAddr
-		md["Method"] = r.Method
-		md["URL"] = r.URL.String()
-		md["Proto"] = r.Proto
-		md["ContentLength"] = fmt.Sprintf("%d", r.ContentLength)
-		md["TransferEncoding"] = strings.Join(r.TransferEncoding, ",")
-		md["Host"] = r.Host
-		md["RequestURI"] = r.RequestURI
+		md["RemoteAddr"] = []string{r.RemoteAddr}
+		md["Method"] = []string{r.Method}
+		md["URL"] = []string{r.URL.String()}
+		md["Proto"] = []string{r.Proto}
+		md["Content-Length"] = []string{fmt.Sprintf("%d", r.ContentLength)}
+		md["Transfer-Encoding"] = r.TransferEncoding
+		md["Host"] = []string{r.Host}
+		md["RequestURI"] = []string{r.RequestURI}
+		if r.TLS != nil {
+			md["TLS"] = []string{"true"}
+			md["TLS-ALPN"] = []string{r.TLS.NegotiatedProtocol}
+			md["TLS-ServerName"] = []string{r.TLS.ServerName}
+		}
+
 		ctx = metadata.NewIncomingContext(ctx, md)
 
 		path := r.URL.Path
@@ -257,10 +263,9 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 			}
 			if nmd, ok := metadata.FromOutgoingContext(fctx); ok {
 				for k, v := range nmd {
-					md.Set(k, v)
+					md[k] = v
 				}
 			}
-			metadata.SetOutgoingContext(ctx, md)
 
 			return err
 		}
@@ -285,14 +290,12 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		w.Header().Set(metadata.HeaderContentType, ct)
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
 			for k, v := range md {
-				w.Header().Set(k, v)
+				w.Header()[k] = v
 			}
 		}
 		if md := getRspHeader(ctx); md != nil {
 			for k, v := range md {
-				for _, vv := range v {
-					w.Header().Add(k, vv)
-				}
+				w.Header()[k] = v
 			}
 		}
 		if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
@@ -346,23 +349,23 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		md = metadata.New(len(r.Header) + 8)
 	}
 	for k, v := range r.Header {
-		md[k] = strings.Join(v, ", ")
+		md[k] = v
 	}
-	md["RemoteAddr"] = r.RemoteAddr
+	md["RemoteAddr"] = []string{r.RemoteAddr}
 	if r.TLS != nil {
-		md["Scheme"] = "https"
+		md["Scheme"] = []string{"https"}
 	} else {
-		md["Scheme"] = "http"
+		md["Scheme"] = []string{"http"}
 	}
-	md["Method"] = r.Method
-	md["URL"] = r.URL.String()
-	md["Proto"] = r.Proto
-	md["ContentLength"] = fmt.Sprintf("%d", r.ContentLength)
+	md["Method"] = []string{r.Method}
+	md["URL"] = []string{r.URL.String()}
+	md["Proto"] = []string{r.Proto}
+	md["Content-Length"] = []string{fmt.Sprintf("%d", r.ContentLength)}
 	if len(r.TransferEncoding) > 0 {
-		md["TransferEncoding"] = strings.Join(r.TransferEncoding, ",")
+		md["Transfer-Encoding"] = r.TransferEncoding
 	}
-	md["Host"] = r.Host
-	md["RequestURI"] = r.RequestURI
+	md["Host"] = []string{r.Host}
+	md["RequestURI"] = []string{r.RequestURI}
 	ctx = metadata.NewIncomingContext(ctx, md)
 
 	path := r.URL.Path
@@ -520,10 +523,9 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if nmd, ok := metadata.FromOutgoingContext(fctx); ok {
 			for k, v := range nmd {
-				md.Set(k, v)
+				md[k] = v
 			}
 		}
-		metadata.SetOutgoingContext(ctx, md)
 
 		return err
 	}
@@ -548,7 +550,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(metadata.HeaderContentType, ct)
 	if md, ok := metadata.FromOutgoingContext(ctx); ok {
 		for k, v := range md {
-			w.Header().Set(k, v)
+			w.Header()[k] = v
 		}
 	}
 	if md := getRspHeader(ctx); md != nil {

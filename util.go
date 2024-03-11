@@ -31,7 +31,7 @@ func FillRequest(ctx context.Context, req interface{}, opts ...FillRequestOption
 		}
 	}
 
-	cookies := strings.Split(md["Cookie"], ";")
+	cookies := md["Cookie"]
 	cmd := make(map[string]string, len(cookies))
 	for _, cookie := range cookies {
 		kv := strings.Split(cookie, "=")
