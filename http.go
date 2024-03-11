@@ -552,6 +552,7 @@ func (h *Server) Start() error {
 	fn := handler
 
 	var hs *http.Server
+	var srvFunc func(net.Listener) error
 	if h.opts.Context != nil {
 		if mwf, ok := h.opts.Context.Value(middlewareKey{}).([]func(http.Handler) http.Handler); ok && len(mwf) > 0 {
 			// wrap the handler func
@@ -562,14 +563,24 @@ func (h *Server) Start() error {
 		var ok bool
 		if hs, ok = h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
 			hs.Handler = fn
+			srvFunc = hs.Serve
 		}
 	}
 
-	go func() {
-		if cerr := hs.Serve(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-			h.opts.Logger.Error(h.opts.Context, cerr)
-		}
-	}()
+	if srvFunc != nil {
+		go func() {
+			if cerr := srvFunc(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
+				h.opts.Logger.Error(h.opts.Context, cerr)
+			}
+		}()
+	} else {
+		go func() {
+			hs = &http.Server{Handler: fn}
+			if cerr := hs.Serve(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
+				h.opts.Logger.Error(h.opts.Context, cerr)
+			}
+		}()
+	}
 
 	go func() {
 		t := new(time.Ticker)
