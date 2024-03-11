@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	codecpb "go.unistack.org/micro-proto/v3/codec"
-	"go.unistack.org/micro/v3/errors"
 	"go.unistack.org/micro/v3/logger"
 	"go.unistack.org/micro/v3/metadata"
 	"go.unistack.org/micro/v3/meter"
@@ -81,7 +80,7 @@ func NewHandler(opts ...Option) *Handler {
 func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.Frame) error {
 	log, ok := logger.FromContext(ctx)
 	if !ok {
-		log = logger.DefaultLogger()
+		log = logger.DefaultLogger
 	}
 
 	buf := bufPool.Get().(*bytes.Buffer)
@@ -102,7 +101,7 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 	}
 
 	if err := h.opts.Meter.Write(w, h.opts.MeterOptions...); err != nil {
-		log.Error(ctx, errors.InternalServerError(h.opts.Name, "%v", err))
+		log.Error(ctx, "http/meter write failed", err)
 		return nil
 	}
 
