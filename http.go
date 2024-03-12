@@ -562,6 +562,8 @@ func (h *Server) Start() error {
 		var ok bool
 		if hs, ok = h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
 			hs.Handler = fn
+		} else {
+			hs = &http.Server{Handler: fn}
 		}
 	}
 
