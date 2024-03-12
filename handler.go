@@ -115,14 +115,14 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		md["Method"] = r.Method
 		md["URL"] = r.URL.String()
 		md["Proto"] = r.Proto
-		md["ContentLength"] = fmt.Sprintf("%d", r.ContentLength)
-		md["TransferEncoding"] = strings.Join(r.TransferEncoding, ",")
+		md["Content-Length"] = fmt.Sprintf("%d", r.ContentLength)
+		md["Transfer-Encoding"] = strings.Join(r.TransferEncoding, ",")
 		md["Host"] = r.Host
 		md["RequestURI"] = r.RequestURI
 		if r.TLS != nil {
 			md["TLS"] = "true"
-			md["TLS_ALPN"] = r.TLS.NegotiatedProtocol
-			md["TLS_ServerName"] = r.TLS.ServerName
+			md["TLS-ALPN"] = r.TLS.NegotiatedProtocol
+			md["TLS-ServerName"] = r.TLS.ServerName
 		}
 
 		ctx = metadata.NewIncomingContext(ctx, md)
