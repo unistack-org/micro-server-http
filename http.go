@@ -232,6 +232,7 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
 		}
 
+		h.opts.Logger.Infof(h.opts.Context, fmt.Sprintf("try to detect cors handlers usage %v", h.registerCORS))
 		if h.registerCORS {
 			h.opts.Logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s", md["Path"])
 			if err := hdlr.handlers.Insert([]string{http.MethodOptions}, md["Path"], pth); err != nil {
@@ -239,6 +240,7 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 			}
 		}
 
+		h.opts.Logger.Infof(h.opts.Context, fmt.Sprintf("try to detect rpc handlers usage %v", h.registerRPC))
 		if h.registerRPC {
 			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
 			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
