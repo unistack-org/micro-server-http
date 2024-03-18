@@ -232,7 +232,10 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 		if h.registerCORS {
 			logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s", md["Path"])
 			methods = append(methods, http.MethodOptions)
+		} else {
+			logger.Infof(h.opts.Context, "not register cors handler for http.MethodOptions %s", md["Path"])
 		}
+
 		if err := hdlr.handlers.Insert(methods, md["Path"], pth); err != nil {
 			logger.Errorf(h.opts.Context, "cant add handler for %v %s", methods, md["Path"])
 		}
@@ -243,6 +246,8 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 			if h.registerCORS {
 				logger.Infof(h.opts.Context, "register cors handler for %v %s", methods, "/"+hn)
 				methods = append(methods, http.MethodOptions)
+			} else {
+				logger.Infof(h.opts.Context, "not register cors handler for %v %s", methods, "/"+hn)
 			}
 
 			if err := hdlr.handlers.Insert(methods, "/"+hn, pth); err != nil {
