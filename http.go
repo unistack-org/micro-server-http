@@ -35,6 +35,7 @@ type Server struct {
 	pathHandlers *rhttp.Trie
 	opts         server.Options
 	registerRPC  bool
+	registerCORS bool
 	sync.RWMutex
 	registered bool
 	init       bool
@@ -82,6 +83,10 @@ func (h *Server) Init(opts ...server.Option) error {
 
 	if v, ok := h.opts.Context.Value(registerRPCHandlerKey{}).(bool); ok {
 		h.registerRPC = v
+	}
+
+	if v, ok := h.opts.Context.Value(registerCORSHandlerKey{}).(bool); ok {
+		h.registerCORS = v
 	}
 
 	if phs, ok := h.opts.Context.Value(pathHandlerKey{}).(*pathHandlerVal); ok && phs.h != nil {
@@ -225,6 +230,13 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 
 		if err := hdlr.handlers.Insert([]string{md["Method"]}, md["Path"], pth); err != nil {
 			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
+		}
+
+		if h.registerCORS {
+			h.opts.Logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s /%s", hn, hn)
+			if err := hdlr.handlers.Insert([]string{http.MethodOptions}, "/"+hn, pth); err != nil {
+				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodOptions %s /%s", hn, hn)
+			}
 		}
 
 		if h.registerRPC {
