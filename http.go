@@ -228,30 +228,25 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 		pth := &patHandler{mtype: mtype, name: name, rcvr: rcvr}
 		hdlr.name = name
 
-		if err := hdlr.handlers.Insert([]string{md["Method"]}, md["Path"], pth); err != nil {
-			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
-		}
-
-		h.opts.Logger.Infof(h.opts.Context, fmt.Sprintf("try to detect cors handlers usage %v", h.registerCORS))
+		methods := []string{md["Method"]}
 		if h.registerCORS {
-			h.opts.Logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s", md["Path"])
-			if err := hdlr.handlers.Insert([]string{http.MethodOptions}, md["Path"], pth); err != nil {
-				h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
-			}
+			logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s", md["Path"])
+			methods = append(methods, http.MethodOptions)
+		}
+		if err := hdlr.handlers.Insert(methods, md["Path"], pth); err != nil {
+			logger.Errorf(h.opts.Context, "cant add handler for %v %s", methods, md["Path"])
 		}
 
-		h.opts.Logger.Infof(h.opts.Context, fmt.Sprintf("try to detect rpc handlers usage %v", h.registerRPC))
+		logger.Infof(h.opts.Context, fmt.Sprintf("try to detect rpc handlers usage %v", h.registerRPC))
 		if h.registerRPC {
-			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
-			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
-				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+			methods := []string{http.MethodPost}
+			if h.registerCORS {
+				logger.Infof(h.opts.Context, "register cors handler for %v %s", methods, "/"+hn)
+				methods = append(methods, http.MethodOptions)
 			}
 
-			if h.registerCORS {
-				h.opts.Logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s /%s", hn, hn)
-				if err := hdlr.handlers.Insert([]string{http.MethodOptions}, "/"+hn, pth); err != nil {
-					h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodOptions %s /%s", hn, hn)
-				}
+			if err := hdlr.handlers.Insert(methods, "/"+hn, pth); err != nil {
+				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
 			}
 		}
 	}
