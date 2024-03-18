@@ -35,6 +35,7 @@ type Server struct {
 	pathHandlers *rhttp.Trie
 	opts         server.Options
 	registerRPC  bool
+	registerCORS bool
 	sync.RWMutex
 	registered bool
 	init       bool
@@ -82,6 +83,10 @@ func (h *Server) Init(opts ...server.Option) error {
 
 	if v, ok := h.opts.Context.Value(registerRPCHandlerKey{}).(bool); ok {
 		h.registerRPC = v
+	}
+
+	if v, ok := h.opts.Context.Value(registerCORSHandlerKey{}).(bool); ok {
+		h.registerCORS = v
 	}
 
 	if phs, ok := h.opts.Context.Value(pathHandlerKey{}).(*pathHandlerVal); ok && phs.h != nil {
@@ -227,10 +232,26 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
 		}
 
+		h.opts.Logger.Infof(h.opts.Context, fmt.Sprintf("try to detect cors handlers usage %v", h.registerCORS))
+		if h.registerCORS {
+			h.opts.Logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s", md["Path"])
+			if err := hdlr.handlers.Insert([]string{http.MethodOptions}, md["Path"], pth); err != nil {
+				h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md["Method"], md["Path"])
+			}
+		}
+
+		h.opts.Logger.Infof(h.opts.Context, fmt.Sprintf("try to detect rpc handlers usage %v", h.registerRPC))
 		if h.registerRPC {
 			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
 			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
 				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
+			}
+
+			if h.registerCORS {
+				h.opts.Logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s /%s", hn, hn)
+				if err := hdlr.handlers.Insert([]string{http.MethodOptions}, "/"+hn, pth); err != nil {
+					h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodOptions %s /%s", hn, hn)
+				}
 			}
 		}
 	}
@@ -501,7 +522,6 @@ func (h *Server) Start() error {
 	h.Unlock()
 
 	var handler http.Handler
-	var srvFunc func(net.Listener) error
 
 	// nolint: nestif
 	if h.opts.Context != nil {
@@ -552,6 +572,7 @@ func (h *Server) Start() error {
 
 	fn := handler
 
+	var hs *http.Server
 	if h.opts.Context != nil {
 		if mwf, ok := h.opts.Context.Value(middlewareKey{}).([]func(http.Handler) http.Handler); ok && len(mwf) > 0 {
 			// wrap the handler func
@@ -559,25 +580,19 @@ func (h *Server) Start() error {
 				fn = mwf[i-1](fn)
 			}
 		}
-		if hs, ok := h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
+		var ok bool
+		if hs, ok = h.opts.Context.Value(serverKey{}).(*http.Server); ok && hs != nil {
 			hs.Handler = fn
-			srvFunc = hs.Serve
+		} else {
+			hs = &http.Server{Handler: fn}
 		}
 	}
 
-	if srvFunc != nil {
-		go func() {
-			if cerr := srvFunc(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-				h.opts.Logger.Error(h.opts.Context, cerr)
-			}
-		}()
-	} else {
-		go func() {
-			if cerr := http.Serve(ts, fn); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-				h.opts.Logger.Error(h.opts.Context, cerr)
-			}
-		}()
-	}
+	go func() {
+		if cerr := hs.Serve(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
+			h.opts.Logger.Error(h.opts.Context, cerr)
+		}
+	}()
 
 	go func() {
 		t := new(time.Ticker)
@@ -641,7 +656,15 @@ func (h *Server) Start() error {
 			config.Logger.Errorf(config.Context, "Broker disconnect error: %s", err)
 		}
 
-		ch <- ts.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), h.opts.GracefulTimeout)
+		defer cancel()
+
+		err := hs.Shutdown(ctx)
+		if err != nil {
+			err = hs.Close()
+		}
+
+		ch <- err
 	}()
 
 	return nil
