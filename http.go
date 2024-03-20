@@ -85,10 +85,6 @@ func (h *Server) Init(opts ...server.Option) error {
 		h.registerRPC = v
 	}
 
-	if v, ok := h.opts.Context.Value(registerCORSHandlerKey{}).(bool); ok {
-		h.registerCORS = v
-	}
-
 	if phs, ok := h.opts.Context.Value(pathHandlerKey{}).(*pathHandlerVal); ok && phs.h != nil {
 		for pm, ps := range phs.h {
 			for pp, ph := range ps {
@@ -196,6 +192,11 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 		}
 	*/
 
+	registerCORS := false
+	if v, ok := options.Context.Value(registerCORSHandlerKey{}).(bool); ok && v {
+		registerCORS = true
+	}
+
 	for hn, md := range options.Metadata {
 		var method reflect.Method
 		mname := hn[strings.Index(hn, ".")+1:]
@@ -229,25 +230,18 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 		hdlr.name = name
 
 		methods := []string{md["Method"]}
-		if h.registerCORS {
-			logger.Infof(h.opts.Context, "register cors handler for http.MethodOptions %s", md["Path"])
+		if registerCORS {
 			methods = append(methods, http.MethodOptions)
-		} else {
-			logger.Infof(h.opts.Context, "not register cors handler for http.MethodOptions %s", md["Path"])
 		}
 
 		if err := hdlr.handlers.Insert(methods, md["Path"], pth); err != nil {
-			logger.Errorf(h.opts.Context, "cant add handler for %v %s", methods, md["Path"])
+			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %v %s", methods, md["Path"])
 		}
 
-		logger.Infof(h.opts.Context, fmt.Sprintf("try to detect rpc handlers usage %v", h.registerRPC))
 		if h.registerRPC {
 			methods := []string{http.MethodPost}
-			if h.registerCORS {
-				logger.Infof(h.opts.Context, "register cors handler for %v %s", methods, "/"+hn)
+			if registerCORS {
 				methods = append(methods, http.MethodOptions)
-			} else {
-				logger.Infof(h.opts.Context, "not register cors handler for %v %s", methods, "/"+hn)
 			}
 
 			if err := hdlr.handlers.Insert(methods, "/"+hn, pth); err != nil {
@@ -294,13 +288,23 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 		pth := &patHandler{mtype: mtype, name: name, rcvr: rcvr}
 		hdlr.name = name
 
-		if err := hdlr.handlers.Insert([]string{md.Method}, md.Path, pth); err != nil {
+		methods := []string{md.Method}
+		if registerCORS {
+			methods = append(methods, http.MethodOptions)
+		}
+
+		if err := hdlr.handlers.Insert(methods, md.Path, pth); err != nil {
 			h.opts.Logger.Errorf(h.opts.Context, "cant add handler for %s %s", md.Method, md.Path)
 		}
 
 		if h.registerRPC {
+			methods := []string{http.MethodPost}
+			if registerCORS {
+				methods = append(methods, http.MethodOptions)
+			}
+
 			h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
-			if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
+			if err := hdlr.handlers.Insert(methods, "/"+hn, pth); err != nil {
 				h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
 			}
 		}

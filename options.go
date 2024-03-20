@@ -136,8 +136,8 @@ func RegisterRPCHandler(b bool) server.Option {
 type registerCORSHandlerKey struct{}
 
 // RegisterCORSHandler registers cors endpoints with /ServiceName.ServiceEndpoint method POPTIONSOST
-func RegisterCORSHandler(b bool) server.Option {
-	return server.SetOption(registerCORSHandlerKey{}, b)
+func RegisterCORSHandler(b bool) server.HandlerOption {
+	return server.SetHandlerOption(registerCORSHandlerKey{}, b)
 }
 
 type handlerEndpointsKey struct{}
