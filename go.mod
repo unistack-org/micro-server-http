@@ -3,7 +3,7 @@ module go.unistack.org/micro-server-http/v3
 go 1.18
 
 require (
-	go.unistack.org/micro-proto/v3 v3.3.1
+	go.unistack.org/micro-proto/v3 v3.4.1
 	go.unistack.org/micro/v3 v3.10.42
 	golang.org/x/net v0.14.0
 )
