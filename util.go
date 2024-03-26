@@ -33,13 +33,11 @@ func FillRequest(ctx context.Context, req interface{}, opts ...FillRequestOption
 
 	cookies := md["Cookie"]
 	cmd := make(map[string]string, len(cookies))
-	for _, cookie := range cookies {
-		kv := strings.Split(cookie, "=")
-		if len(kv) != 2 {
-			continue
-		}
-		cmd[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+	kv := strings.Split(cookies, "=")
+	if len(kv) != 2 {
+		return nil
 	}
+	cmd[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
 	for idx := 0; idx < len(options.cookies)/2; idx += 2 {
 		k := http.CanonicalHeaderKey(options.cookies[idx])
 		v, ok := cmd[k]

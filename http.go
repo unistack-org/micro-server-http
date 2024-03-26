@@ -217,7 +217,7 @@ func (h *Server) newHTTPHandler(handler interface{}, opts ...options.Option) *ht
 		pth := &patHandler{mtype: mtype, name: name, rcvr: rcvr}
 		hdlr.name = name
 
-		if err := hdlr.handlers.Insert(md["Method"], md["Path"][0], pth); err != nil {
+		if err := hdlr.handlers.Insert([]string{md["Method"]}, md["Path"], pth); err != nil {
 			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add handler for %s %s", md["Method"][0], md["Path"][0]))
 		}
 
@@ -468,7 +468,7 @@ func (h *Server) Start() error {
 
 	go func() {
 		if cerr := hs.Serve(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
-			h.opts.Logger.Error(h.opts.Context, cerr)
+			h.opts.Logger.Error(h.opts.Context, cerr.Error())
 		}
 	}()
 

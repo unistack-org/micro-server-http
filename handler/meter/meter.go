@@ -42,9 +42,10 @@ type Handler struct {
 type Option func(*Options)
 
 type Options struct {
-	Meter        meter.Meter
-	Name         string
-	MeterOptions []options.Option
+	Meter           meter.Meter
+	Name            string
+	MeterOptions    []options.Option
+	DisableCompress bool
 }
 
 func Meter(m meter.Meter) Option {
@@ -59,6 +60,12 @@ func Name(name string) Option {
 	}
 }
 
+func DisableCompress(g bool) Option {
+	return func(o *Options) {
+		o.DisableCompress = g
+	}
+}
+
 func MeterOptions(opts ...options.Option) Option {
 	return func(o *Options) {
 		o.MeterOptions = append(o.MeterOptions, opts...)
@@ -66,7 +73,7 @@ func MeterOptions(opts ...options.Option) Option {
 }
 
 func NewOptions(opts ...Option) Options {
-	options := Options{Meter: meter.DefaultMeter}
+	options := Options{Meter: meter.DefaultMeter, DisableCompress: false}
 	for _, o := range opts {
 		o(&options)
 	}
@@ -90,8 +97,9 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 
 	w := io.Writer(buf)
 
-	if md, ok := metadata.FromContext(ctx); gzipAccepted(md) && ok {
-		md.Set(contentEncodingHeader, "gzip")
+	if md, ok := metadata.FromIncomingContext(ctx); gzipAccepted(md) && ok && !h.opts.DisableCompress {
+		omd, _ := metadata.FromOutgoingContext(ctx)
+		omd.Set(contentEncodingHeader, "gzip")
 		gz := gzipPool.Get().(*gzip.Writer)
 		defer gzipPool.Put(gz)
 
@@ -99,6 +107,7 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 		defer gz.Close()
 
 		w = gz
+		gz.Flush()
 	}
 
 	if err := h.opts.Meter.Write(w, h.opts.MeterOptions...); err != nil {
