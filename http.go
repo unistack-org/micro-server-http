@@ -561,7 +561,7 @@ func (h *Server) Start() error {
 
 	if err := config.RegisterCheck(h.opts.Context); err != nil {
 		if config.Logger.V(logger.ErrorLevel) {
-			config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register check error", config.Name, config.ID) err)
+			config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register check error", config.Name, config.ID), err)
 		}
 	} else {
 		if err = h.Register(); err != nil {
@@ -621,7 +621,7 @@ func (h *Server) Start() error {
 				// nolint: nestif
 				if rerr != nil && registered {
 					if config.Logger.V(logger.ErrorLevel) {
-						config.Logger.Error(config.Context,fmt.Sprintf("Server %s-%s register check error, deregister it", config.Name, config.ID), rerr)
+						config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register check error, deregister it", config.Name, config.ID), rerr)
 					}
 					// deregister self in case of error
 					if err := h.Deregister(); err != nil {
@@ -637,7 +637,7 @@ func (h *Server) Start() error {
 				}
 				if err := h.Register(); err != nil {
 					if config.Logger.V(logger.ErrorLevel) {
-						config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register error: %s", config.Name, config.ID), err)
+						config.Logger.Error(config.Context, fmt.Sprintf("Server %s-%s register error", config.Name, config.ID), err)
 					}
 				}
 
