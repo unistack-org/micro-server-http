@@ -1,4 +1,4 @@
-package swagger
+package swagger_handler
 
 import (
 	"io/fs"

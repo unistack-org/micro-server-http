@@ -1,4 +1,4 @@
-package meter // import "go.unistack.org/micro-server-http/v3/handler/meter"
+package meter_handler
 
 import (
 	"bytes"
