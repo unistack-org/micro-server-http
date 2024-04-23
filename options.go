@@ -69,7 +69,7 @@ func getRspHeader(ctx context.Context) http.Header {
 
 // GetRspCode used internally by generated http server handler
 func GetRspCode(ctx context.Context) int {
-	var code int
+	code := int(200)
 	if rsp, ok := ctx.Value(rspCodeKey{}).(*rspCodeVal); ok {
 		code = rsp.code
 	}

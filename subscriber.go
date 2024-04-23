@@ -10,6 +10,7 @@ import (
 	"go.unistack.org/micro/v3/broker"
 	"go.unistack.org/micro/v3/codec"
 	"go.unistack.org/micro/v3/metadata"
+	"go.unistack.org/micro/v3/options"
 	"go.unistack.org/micro/v3/register"
 	"go.unistack.org/micro/v3/server"
 )
@@ -159,9 +160,11 @@ func (s *Server) createSubHandler(sb *httpSubscriber, opts server.Options) broke
 				return nil
 			}
 
-			for i := len(opts.SubWrappers); i > 0; i-- {
-				fn = opts.SubWrappers[i-1](fn)
-			}
+			opts.Hooks.EachNext(func(hook options.Hook) {
+				if h, ok := hook.(server.HookSubHandler); ok {
+					fn = h(fn)
+				}
+			})
 
 			go func() {
 				results <- fn(ctx, &httpMessage{
