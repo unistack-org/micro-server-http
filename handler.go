@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -475,15 +476,25 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusNotFound)
+		sp.SetStatus(tracer.SpanStatusError, http.StatusText(http.StatusNotFound))
+		sp.Finish()
 		return
 	}
 
-	ctx, sp = h.opts.Tracer.Start(ctx, handler.name+" rpc-server",
+	endpointName := fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name)
+	topts := []tracer.SpanOption{
 		tracer.WithSpanKind(tracer.SpanKindServer),
 		tracer.WithSpanLabels(
-			"endpoint", handler.name,
+			"endpoint", endpointName,
 		),
-	)
+	}
+
+	if slices.Contains(tracer.DefaultSkipEndpoints, endpointName) {
+		topts = append(topts, tracer.WithSpanRecord(false))
+	}
+
+	ctx, sp = h.opts.Tracer.Start(ctx, endpointName+" rpc-server", topts...)
+
 	defer func() {
 		te := time.Since(ts)
 		h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", handler.name).Update(te.Seconds())
