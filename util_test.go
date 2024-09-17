@@ -8,7 +8,51 @@ import (
 	"testing"
 
 	"go.unistack.org/micro/v3/metadata"
+	"go.unistack.org/micro/v3/options"
+	"go.unistack.org/micro/v3/server"
 )
+
+func Test_Hook(t *testing.T) {
+	opts := server.Options{}
+
+	var fn server.HandlerFunc = func(fctx context.Context, req server.Request, rsp interface{}) (err error) {
+		// fmt.Println("1")
+		return nil
+	}
+
+	var fn2 server.HandlerWrapper = func(next server.HandlerFunc) server.HandlerFunc {
+		return func(ctx context.Context, req server.Request, rsp interface{}) error {
+			//	fmt.Println("2")
+			return next(ctx, req, rsp)
+		}
+	}
+	var fn3 server.HandlerWrapper = func(next server.HandlerFunc) server.HandlerFunc {
+		return func(ctx context.Context, req server.Request, rsp interface{}) error {
+			// fmt.Println("3")
+			return next(ctx, req, rsp)
+		}
+	}
+	var fn4 server.HandlerWrapper = func(next server.HandlerFunc) server.HandlerFunc {
+		return func(ctx context.Context, req server.Request, rsp interface{}) error {
+			// fmt.Println("4")
+			return next(ctx, req, rsp)
+		}
+	}
+
+	opts.Hooks = append(opts.Hooks, fn2, fn3, fn4)
+
+	opts.Hooks.EachNext(func(hook options.Hook) {
+		if h, ok := hook.(server.HandlerWrapper); ok {
+			// fmt.Printf("h %#+v\n", h)
+			fn = h(fn)
+		}
+	})
+
+	err := fn(nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestFillrequest(t *testing.T) {
 	md := metadata.New(1)

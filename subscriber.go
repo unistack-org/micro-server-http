@@ -1,14 +1,12 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"reflect"
 	"strings"
 
 	"go.unistack.org/micro/v3/broker"
-	"go.unistack.org/micro/v3/codec"
 	"go.unistack.org/micro/v3/metadata"
 	"go.unistack.org/micro/v3/options"
 	"go.unistack.org/micro/v3/register"
@@ -132,13 +130,7 @@ func (s *Server) createSubHandler(sb *httpSubscriber, opts server.Options) broke
 				req = req.Elem()
 			}
 
-			buf := bytes.NewBuffer(msg.Body)
-
-			if err := cf.ReadHeader(buf, &codec.Message{}, codec.Event); err != nil {
-				return err
-			}
-
-			if err := cf.ReadBody(buf, req.Interface()); err != nil {
+			if err := cf.Unmarshal(msg.Body, req.Interface()); err != nil {
 				return err
 			}
 
