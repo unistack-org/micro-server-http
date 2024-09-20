@@ -15,6 +15,7 @@ import (
 	"go.unistack.org/micro/v3/errors"
 	"go.unistack.org/micro/v3/logger"
 	"go.unistack.org/micro/v3/metadata"
+	"go.unistack.org/micro/v3/meter"
 	"go.unistack.org/micro/v3/options"
 	"go.unistack.org/micro/v3/register"
 	"go.unistack.org/micro/v3/semconv"
@@ -435,49 +436,66 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var sp tracer.Span
 	if !match && h.hd != nil {
 		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
-			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", h.hd.Name()).Inc()
-			ctx, sp = h.opts.Tracer.Start(ctx, h.hd.Name()+" rpc-server",
-				tracer.WithSpanKind(tracer.SpanKindServer),
-				tracer.WithSpanLabels(
-					"endpoint", h.hd.Name(),
-				),
-			)
-			hdlr.ServeHTTP(w, r.WithContext(ctx))
-			n := GetRspCode(ctx)
-			if n > 399 {
-				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", h.hd.Name(), "status", "success", "code", strconv.Itoa(n)).Inc()
-				if s, _ := sp.Status(); s != tracer.SpanStatusError {
-					sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
-				}
-			} else {
-				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", h.hd.Name(), "status", "failure", "code", strconv.Itoa(n)).Inc()
+			if !slices.Contains(tracer.DefaultSkipEndpoints, h.hd.Name()) {
+				ctx, sp = h.opts.Tracer.Start(ctx, h.hd.Name()+" rpc-server",
+					tracer.WithSpanKind(tracer.SpanKindServer),
+					tracer.WithSpanLabels(
+						"endpoint", h.hd.Name(),
+					),
+				)
+				defer func() {
+					n := GetRspCode(ctx)
+					if s, _ := sp.Status(); s != tracer.SpanStatusError && n > 399 {
+						sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
+					}
+					sp.Finish()
+				}()
 			}
-			te := time.Since(ts)
-			h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", h.hd.Name()).Update(te.Seconds())
-			h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", h.hd.Name()).Update(te.Seconds())
-			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", h.hd.Name()).Dec()
-			sp.Finish()
+
+			if !slices.Contains(meter.DefaultSkipEndpoints, h.hd.Name()) {
+				h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", h.hd.Name()).Inc()
+
+				defer func() {
+					n := GetRspCode(ctx)
+					if n > 399 {
+						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", h.hd.Name(), "status", "success", "code", strconv.Itoa(n)).Inc()
+					} else {
+						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", h.hd.Name(), "status", "failure", "code", strconv.Itoa(n)).Inc()
+					}
+					te := time.Since(ts)
+					h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", h.hd.Name()).Update(te.Seconds())
+					h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", h.hd.Name()).Update(te.Seconds())
+					h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", h.hd.Name()).Dec()
+				}()
+			}
+
+			hdlr.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 	} else if !match {
 		// check for http.HandlerFunc handlers
-		ctx, sp = h.opts.Tracer.Start(ctx, r.URL.Path+" rpc-server",
-			tracer.WithSpanKind(tracer.SpanKindServer),
-			tracer.WithSpanLabels(
-				"endpoint", r.URL.Path,
-			),
-		)
+		if !slices.Contains(tracer.DefaultSkipEndpoints, r.URL.Path) {
+			ctx, sp = h.opts.Tracer.Start(ctx, r.URL.Path+" rpc-server",
+				tracer.WithSpanKind(tracer.SpanKindServer),
+				tracer.WithSpanLabels(
+					"endpoint", r.URL.Path,
+				),
+			)
+
+			defer func() {
+				if n := GetRspCode(ctx); n > 399 {
+					sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
+				} else {
+					sp.SetStatus(tracer.SpanStatusError, http.StatusText(http.StatusNotFound))
+				}
+				sp.Finish()
+			}()
+		}
 		if ph, _, err := h.pathHandlers.Search(r.Method, r.URL.Path); err == nil {
 			ph.(http.HandlerFunc)(w, r.WithContext(ctx))
-			if n := GetRspCode(ctx); n > 399 {
-				sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
-			}
-			sp.Finish()
 			return
 		}
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusNotFound)
-		sp.SetStatus(tracer.SpanStatusError, http.StatusText(http.StatusNotFound))
-		sp.Finish()
 		return
 	}
 
@@ -495,20 +513,28 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx, sp = h.opts.Tracer.Start(ctx, endpointName+" rpc-server", topts...)
 
-	defer func() {
-		te := time.Since(ts)
-		h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", handler.name).Update(te.Seconds())
-		h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", handler.name).Update(te.Seconds())
-		h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", handler.name).Dec()
+	if !slices.Contains(meter.DefaultSkipEndpoints, handler.name) {
+		defer func() {
+			te := time.Since(ts)
+			h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", handler.name).Update(te.Seconds())
+			h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", handler.name).Update(te.Seconds())
+			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", handler.name).Dec()
 
+			n := GetRspCode(ctx)
+			if n > 399 {
+				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "status", "failure", "code", strconv.Itoa(n)).Inc()
+			} else {
+				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "status", "success", "code", strconv.Itoa(n)).Inc()
+			}
+		}()
+	}
+
+	defer func() {
 		n := GetRspCode(ctx)
 		if n > 399 {
 			if s, _ := sp.Status(); s != tracer.SpanStatusError {
 				sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
 			}
-			h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "status", "failure", "code", strconv.Itoa(n)).Inc()
-		} else {
-			h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "status", "success", "code", strconv.Itoa(n)).Inc()
 		}
 		sp.Finish()
 	}()
