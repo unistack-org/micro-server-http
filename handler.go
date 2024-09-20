@@ -6,14 +6,20 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"go.unistack.org/micro/v3/errors"
 	"go.unistack.org/micro/v3/logger"
 	"go.unistack.org/micro/v3/metadata"
+	"go.unistack.org/micro/v3/options"
 	"go.unistack.org/micro/v3/register"
+	"go.unistack.org/micro/v3/semconv"
 	"go.unistack.org/micro/v3/server"
+	"go.unistack.org/micro/v3/tracer"
 	rhttp "go.unistack.org/micro/v3/util/http"
 	rflutil "go.unistack.org/micro/v3/util/reflect"
 )
@@ -272,9 +278,11 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		// wrap the handler func
-		for i := len(handler.sopts.HdlrWrappers); i > 0; i-- {
-			fn = handler.sopts.HdlrWrappers[i-1](fn)
-		}
+		h.opts.Hooks.EachNext(func(hook options.Hook) {
+			if h, ok := hook.(server.HookHandler); ok {
+				fn = h(fn)
+			}
+		})
 
 		if ct == "application/x-www-form-urlencoded" {
 			cf, err = h.newCodec(DefaultContentType)
@@ -345,8 +353,11 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ct = htype
 	}
 
+	ts := time.Now()
+
 	ctx := context.WithValue(r.Context(), rspCodeKey{}, &rspCodeVal{})
 	ctx = context.WithValue(ctx, rspHeaderKey{}, &rspHeaderVal{})
+
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		md = metadata.New(len(r.Header) + 8)
@@ -421,20 +432,86 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var sp tracer.Span
 	if !match && h.hd != nil {
 		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
-			hdlr.ServeHTTP(w, r)
+			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", h.hd.Name()).Inc()
+			ctx, sp = h.opts.Tracer.Start(ctx, h.hd.Name()+" rpc-server",
+				tracer.WithSpanKind(tracer.SpanKindServer),
+				tracer.WithSpanLabels(
+					"endpoint", h.hd.Name(),
+				),
+			)
+			hdlr.ServeHTTP(w, r.WithContext(ctx))
+			n := GetRspCode(ctx)
+			if n > 399 {
+				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", h.hd.Name(), "status", "success", "code", strconv.Itoa(n)).Inc()
+				if s, _ := sp.Status(); s != tracer.SpanStatusError {
+					sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
+				}
+			} else {
+				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", h.hd.Name(), "status", "failure", "code", strconv.Itoa(n)).Inc()
+			}
+			te := time.Since(ts)
+			h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", h.hd.Name()).Update(te.Seconds())
+			h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", h.hd.Name()).Update(te.Seconds())
+			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", h.hd.Name()).Dec()
+			sp.Finish()
 			return
 		}
 	} else if !match {
 		// check for http.HandlerFunc handlers
+		ctx, sp = h.opts.Tracer.Start(ctx, r.URL.Path+" rpc-server",
+			tracer.WithSpanKind(tracer.SpanKindServer),
+			tracer.WithSpanLabels(
+				"endpoint", r.URL.Path,
+			),
+		)
 		if ph, _, err := h.pathHandlers.Search(r.Method, r.URL.Path); err == nil {
-			ph.(http.HandlerFunc)(w, r)
+			ph.(http.HandlerFunc)(w, r.WithContext(ctx))
+			if n := GetRspCode(ctx); n > 399 {
+				sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
+			}
+			sp.Finish()
 			return
 		}
 		h.errorHandler(ctx, nil, w, r, fmt.Errorf("not matching route found"), http.StatusNotFound)
+		sp.SetStatus(tracer.SpanStatusError, http.StatusText(http.StatusNotFound))
+		sp.Finish()
 		return
 	}
+
+	endpointName := fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name)
+	topts := []tracer.SpanOption{
+		tracer.WithSpanKind(tracer.SpanKindServer),
+		tracer.WithSpanLabels(
+			"endpoint", endpointName,
+		),
+	}
+
+	if slices.Contains(tracer.DefaultSkipEndpoints, endpointName) {
+		topts = append(topts, tracer.WithSpanRecord(false))
+	}
+
+	ctx, sp = h.opts.Tracer.Start(ctx, endpointName+" rpc-server", topts...)
+
+	defer func() {
+		te := time.Since(ts)
+		h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", handler.name).Update(te.Seconds())
+		h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", handler.name).Update(te.Seconds())
+		h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", handler.name).Dec()
+
+		n := GetRspCode(ctx)
+		if n > 399 {
+			if s, _ := sp.Status(); s != tracer.SpanStatusError {
+				sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
+			}
+			h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "status", "failure", "code", strconv.Itoa(n)).Inc()
+		} else {
+			h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "status", "success", "code", strconv.Itoa(n)).Inc()
+		}
+		sp.Finish()
+	}()
 
 	// get fields from url values
 	if len(r.URL.RawQuery) > 0 {
@@ -531,13 +608,18 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		metadata.SetOutgoingContext(ctx, md)
 
+		if err != nil && sp != nil {
+			sp.SetStatus(tracer.SpanStatusError, err.Error())
+		}
+
 		return err
 	}
 
-	// wrap the handler func
-	for i := len(handler.sopts.HdlrWrappers); i > 0; i-- {
-		fn = handler.sopts.HdlrWrappers[i-1](fn)
-	}
+	h.opts.Hooks.EachNext(func(hook options.Hook) {
+		if h, ok := hook.(server.HookHandler); ok {
+			fn = h(fn)
+		}
+	})
 
 	if ct == "application/x-www-form-urlencoded" {
 		cf, err = h.newCodec(DefaultContentType)
@@ -587,7 +669,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil && handler.sopts.Logger.V(logger.ErrorLevel) {
-		handler.sopts.Logger.Errorf(handler.sopts.Context, "handler err: %v", err)
+		handler.sopts.Logger.Error(handler.sopts.Context, "handler error", err)
 		return
 	}
 
@@ -597,6 +679,6 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(scode)
 
 	if _, cerr := w.Write(buf); cerr != nil {
-		handler.sopts.Logger.Errorf(ctx, "write failed: %v", cerr)
+		handler.sopts.Logger.Error(ctx, "respoonse write error", cerr)
 	}
 }

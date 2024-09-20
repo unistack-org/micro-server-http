@@ -69,7 +69,7 @@ func getRspHeader(ctx context.Context) http.Header {
 
 // GetRspCode used internally by generated http server handler
 func GetRspCode(ctx context.Context) int {
-	var code int
+	code := int(200)
 	if rsp, ok := ctx.Value(rspCodeKey{}).(*rspCodeVal); ok {
 		code = rsp.code
 	}
@@ -136,8 +136,8 @@ func RegisterRPCHandler(b bool) server.Option {
 type registerCORSHandlerKey struct{}
 
 // RegisterCORSHandler registers cors endpoints with /ServiceName.ServiceEndpoint method POPTIONSOST
-func RegisterCORSHandler(b bool) server.Option {
-	return server.SetOption(registerCORSHandlerKey{}, b)
+func RegisterCORSHandler(b bool) server.HandlerOption {
+	return server.SetHandlerOption(registerCORSHandlerKey{}, b)
 }
 
 type handlerEndpointsKey struct{}

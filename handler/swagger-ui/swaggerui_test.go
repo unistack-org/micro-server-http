@@ -1,4 +1,4 @@
-package swaggerui
+package swaggerui_handler
 
 import (
 	"net/http"

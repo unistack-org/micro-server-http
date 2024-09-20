@@ -1,4 +1,4 @@
-package health // import "go.unistack.org/micro-server-http/v3/handler/health"
+package health_handler
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package pprof
+package pprof_handler
 
 import (
 	"expvar"

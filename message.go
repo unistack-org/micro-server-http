@@ -11,7 +11,6 @@ type httpMessage struct {
 	header      metadata.Metadata
 	topic       string
 	contentType string
-	body        []byte
 }
 
 func (r *httpMessage) Topic() string {

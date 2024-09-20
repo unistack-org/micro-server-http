@@ -58,11 +58,7 @@ func (r *rpcRequest) Header() metadata.Metadata {
 }
 
 func (r *rpcRequest) Read() ([]byte, error) {
-	f := &codec.Frame{}
-	if err := r.codec.ReadBody(r.rw, f); err != nil {
-		return nil, err
-	}
-	return f.Data, nil
+	return nil, nil
 }
 
 func (r *rpcRequest) Stream() bool {

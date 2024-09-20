@@ -1,4 +1,4 @@
-package swaggerui // import "go.unistack.org/micro-server-http/v3/handler/swagger-ui"
+package swaggerui_handler
 
 import (
 	"embed"
