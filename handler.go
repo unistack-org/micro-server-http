@@ -694,14 +694,15 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		buf, err = cf.Marshal(replyv.Interface())
 	}
 
-	if err != nil && handler.sopts.Logger.V(logger.ErrorLevel) {
-		handler.sopts.Logger.Error(handler.sopts.Context, "handler error", err)
-		return
-	}
-
-	if nscode := GetRspCode(ctx); nscode != 0 {
+	if err != nil {
+		if handler.sopts.Logger.V(logger.ErrorLevel) {
+			handler.sopts.Logger.Error(handler.sopts.Context, "handler error", err)
+		}
+		scode = http.StatusInternalServerError
+	} else if nscode := GetRspCode(ctx); nscode != 0 {
 		scode = nscode
 	}
+
 	w.WriteHeader(scode)
 
 	if _, cerr := w.Write(buf); cerr != nil {
