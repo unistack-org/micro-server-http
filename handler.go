@@ -29,7 +29,7 @@ var (
 	DefaultErrorHandler = func(ctx context.Context, s server.Handler, w http.ResponseWriter, r *http.Request, err error, status int) {
 		w.WriteHeader(status)
 		if _, cerr := w.Write([]byte(err.Error())); cerr != nil {
-			logger.DefaultLogger.Errorf(ctx, "write failed: %v", cerr)
+			logger.DefaultLogger.Error(ctx, "write error", cerr)
 		}
 	}
 	DefaultContentType = "application/json"
@@ -333,7 +333,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		if err != nil && handler.sopts.Logger.V(logger.ErrorLevel) {
-			handler.sopts.Logger.Errorf(handler.sopts.Context, "handler err: %v", err)
+			handler.sopts.Logger.Error(handler.sopts.Context, "handler error", err)
 			return
 		}
 
@@ -343,7 +343,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		w.WriteHeader(scode)
 
 		if _, cerr := w.Write(buf); cerr != nil {
-			handler.sopts.Logger.Errorf(ctx, "write failed: %v", cerr)
+			handler.sopts.Logger.Error(ctx, "write failed", cerr)
 		}
 	}, nil
 }

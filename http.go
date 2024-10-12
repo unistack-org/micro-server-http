@@ -215,7 +215,7 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 
 		mtype, err := prepareEndpoint(method)
 		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "%v", err)
+			h.opts.Logger.Error(h.opts.Context, "endpoint error", err)
 			continue
 		} else if mtype == nil {
 			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("nil mtype for %s", mname))
@@ -274,7 +274,7 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 
 		mtype, err := prepareEndpoint(method)
 		if err != nil && h.opts.Logger.V(logger.ErrorLevel) {
-			h.opts.Logger.Errorf(h.opts.Context, "%v", err)
+			h.opts.Logger.Error(h.opts.Context, "prepare endpoint error", err)
 			continue
 		} else if mtype == nil {
 			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("nil mtype for %s", mname))
