@@ -454,19 +454,19 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if !slices.Contains(meter.DefaultSkipEndpoints, endpointName) {
-				h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName).Inc()
+				h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName, "server", "http").Inc()
 
 				defer func() {
 					n := GetRspCode(ctx)
 					if n > 399 {
-						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "status", "success", "code", strconv.Itoa(n)).Inc()
+						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "server", "http", "status", "success", "code", strconv.Itoa(n)).Inc()
 					} else {
-						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "status", "failure", "code", strconv.Itoa(n)).Inc()
+						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "server", "http", "status", "failure", "code", strconv.Itoa(n)).Inc()
 					}
 					te := time.Since(ts)
-					h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", endpointName).Update(te.Seconds())
-					h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", endpointName).Update(te.Seconds())
-					h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName).Dec()
+					h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", endpointName, "server", "http").Update(te.Seconds())
+					h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", endpointName, "server", "http").Update(te.Seconds())
+					h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName, "server", "http").Dec()
 				}()
 			}
 
@@ -480,6 +480,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				tracer.WithSpanKind(tracer.SpanKindServer),
 				tracer.WithSpanLabels(
 					"endpoint", r.URL.Path,
+					"server", "http",
 				),
 			)
 
@@ -506,6 +507,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		tracer.WithSpanKind(tracer.SpanKindServer),
 		tracer.WithSpanLabels(
 			"endpoint", endpointName,
+			"server", "http",
 		),
 	}
 
@@ -513,20 +515,20 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		topts = append(topts, tracer.WithSpanRecord(false))
 	}
 
-	ctx, sp = h.opts.Tracer.Start(ctx, endpointName+" rpc-server", topts...)
+	ctx, sp = h.opts.Tracer.Start(ctx, "rpc-server", topts...)
 
 	if !slices.Contains(meter.DefaultSkipEndpoints, handler.name) {
 		defer func() {
 			te := time.Since(ts)
-			h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", handler.name).Update(te.Seconds())
-			h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", handler.name).Update(te.Seconds())
-			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", handler.name).Dec()
+			h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", handler.name, "server", "http").Update(te.Seconds())
+			h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", handler.name, "server", "http").Update(te.Seconds())
+			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", handler.name, "server", "http").Dec()
 
 			n := GetRspCode(ctx)
 			if n > 399 {
-				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "status", "failure", "code", strconv.Itoa(n)).Inc()
+				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "server", "http", "status", "failure", "code", strconv.Itoa(n)).Inc()
 			} else {
-				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "status", "success", "code", strconv.Itoa(n)).Inc()
+				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "server", "http", "status", "success", "code", strconv.Itoa(n)).Inc()
 			}
 		}()
 	}
