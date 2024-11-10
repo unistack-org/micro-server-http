@@ -436,11 +436,12 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var sp tracer.Span
 	if !match && h.hd != nil {
 		if hdlr, ok := h.hd.Handler().(http.Handler); ok {
-			if !slices.Contains(tracer.DefaultSkipEndpoints, h.hd.Name()) {
-				ctx, sp = h.opts.Tracer.Start(ctx, h.hd.Name()+" rpc-server",
+			endpointName := fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name)
+			if !slices.Contains(tracer.DefaultSkipEndpoints, endpointName) {
+				ctx, sp = h.opts.Tracer.Start(ctx, "rpc-server",
 					tracer.WithSpanKind(tracer.SpanKindServer),
 					tracer.WithSpanLabels(
-						"endpoint", h.hd.Name(),
+						"endpoint", endpointName,
 					),
 				)
 				defer func() {
@@ -452,20 +453,20 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}()
 			}
 
-			if !slices.Contains(meter.DefaultSkipEndpoints, h.hd.Name()) {
-				h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", h.hd.Name()).Inc()
+			if !slices.Contains(meter.DefaultSkipEndpoints, endpointName) {
+				h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName).Inc()
 
 				defer func() {
 					n := GetRspCode(ctx)
 					if n > 399 {
-						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", h.hd.Name(), "status", "success", "code", strconv.Itoa(n)).Inc()
+						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "status", "success", "code", strconv.Itoa(n)).Inc()
 					} else {
-						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", h.hd.Name(), "status", "failure", "code", strconv.Itoa(n)).Inc()
+						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "status", "failure", "code", strconv.Itoa(n)).Inc()
 					}
 					te := time.Since(ts)
-					h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", h.hd.Name()).Update(te.Seconds())
-					h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", h.hd.Name()).Update(te.Seconds())
-					h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", h.hd.Name()).Dec()
+					h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", endpointName).Update(te.Seconds())
+					h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", endpointName).Update(te.Seconds())
+					h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName).Dec()
 				}()
 			}
 
@@ -475,7 +476,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if !match {
 		// check for http.HandlerFunc handlers
 		if !slices.Contains(tracer.DefaultSkipEndpoints, r.URL.Path) {
-			ctx, sp = h.opts.Tracer.Start(ctx, r.URL.Path+" rpc-server",
+			ctx, sp = h.opts.Tracer.Start(ctx, "rpc-server",
 				tracer.WithSpanKind(tracer.SpanKindServer),
 				tracer.WithSpanLabels(
 					"endpoint", r.URL.Path,
@@ -500,6 +501,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	endpointName := fmt.Sprintf("%s.%s", hldr.name, hldr.mtype.method.Name)
+
 	topts := []tracer.SpanOption{
 		tracer.WithSpanKind(tracer.SpanKindServer),
 		tracer.WithSpanLabels(
