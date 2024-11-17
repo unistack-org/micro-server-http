@@ -35,7 +35,7 @@ var bufPool = sync.Pool{
 var _ MeterServiceServer = &Handler{}
 
 type Handler struct {
-	opts Options
+	Options Options
 }
 
 type Option func(*Options)
@@ -81,7 +81,7 @@ func NewOptions(opts ...Option) Options {
 
 func NewHandler(opts ...Option) *Handler {
 	options := NewOptions(opts...)
-	return &Handler{opts: options}
+	return &Handler{Options: options}
 }
 
 func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.Frame) error {
@@ -96,7 +96,7 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 
 	w := io.Writer(buf)
 
-	if md, ok := metadata.FromOutgoingContext(ctx); gzipAccepted(md) && ok && !h.opts.DisableCompress {
+	if md, ok := metadata.FromOutgoingContext(ctx); gzipAccepted(md) && ok && !h.Options.DisableCompress {
 		omd, _ := metadata.FromOutgoingContext(ctx)
 		omd.Set(contentEncodingHeader, "gzip")
 		gz := gzipPool.Get().(*gzip.Writer)
@@ -109,7 +109,7 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 		gz.Flush()
 	}
 
-	if err := h.opts.Meter.Write(w, h.opts.MeterOptions...); err != nil {
+	if err := h.Options.Meter.Write(w, h.Options.MeterOptions...); err != nil {
 		log.Error(ctx, "http/meter write failed", err)
 		return nil
 	}
