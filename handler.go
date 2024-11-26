@@ -199,8 +199,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 
 		cf, err := h.newCodec(ct)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			w.WriteHeader(http.StatusUnsupportedMediaType)
 			return
 		}
 
