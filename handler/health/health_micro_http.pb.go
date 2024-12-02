@@ -17,6 +17,20 @@ import (
 var (
 	HealthServiceServerEndpoints = []v3.EndpointMetadata{
 		{
+			Name:   "HealthService.Healthy",
+			Path:   "/health",
+			Method: "GET",
+			Body:   "",
+			Stream: false,
+		},
+		{
+			Name:   "HealthService.Healthy",
+			Path:   "/healthz",
+			Method: "GET",
+			Body:   "",
+			Stream: false,
+		},
+		{
 			Name:   "HealthService.Live",
 			Path:   "/live",
 			Method: "GET",
@@ -24,8 +38,22 @@ var (
 			Stream: false,
 		},
 		{
+			Name:   "HealthService.Live",
+			Path:   "/livez",
+			Method: "GET",
+			Body:   "",
+			Stream: false,
+		},
+		{
 			Name:   "HealthService.Ready",
 			Path:   "/ready",
+			Method: "GET",
+			Body:   "",
+			Stream: false,
+		},
+		{
+			Name:   "HealthService.Ready",
+			Path:   "/readyz",
 			Method: "GET",
 			Body:   "",
 			Stream: false,
@@ -47,6 +75,24 @@ type healthServiceClient struct {
 
 func NewHealthServiceClient(name string, c client.Client) HealthServiceClient {
 	return &healthServiceClient{c: c, name: name}
+}
+
+func (c *healthServiceClient) Healthy(ctx context.Context, req *codec.Frame, opts ...client.CallOption) (*codec.Frame, error) {
+	errmap := make(map[string]interface{}, 1)
+	errmap["default"] = &codec.Frame{}
+	opts = append(opts,
+		v31.ErrorMap(errmap),
+	)
+	opts = append(opts,
+		v31.Method(http.MethodGet),
+		v31.Path("/health"),
+	)
+	rsp := &codec.Frame{}
+	err := c.c.Call(ctx, c.c.NewRequest(c.name, "HealthService.Healthy", req), rsp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return rsp, nil
 }
 
 func (c *healthServiceClient) Live(ctx context.Context, req *codec.Frame, opts ...client.CallOption) (*codec.Frame, error) {
@@ -107,6 +153,10 @@ type healthServiceServer struct {
 	HealthServiceServer
 }
 
+func (h *healthServiceServer) Healthy(ctx context.Context, req *codec.Frame, rsp *codec.Frame) error {
+	return h.HealthServiceServer.Healthy(ctx, req, rsp)
+}
+
 func (h *healthServiceServer) Live(ctx context.Context, req *codec.Frame, rsp *codec.Frame) error {
 	return h.HealthServiceServer.Live(ctx, req, rsp)
 }
@@ -121,6 +171,7 @@ func (h *healthServiceServer) Version(ctx context.Context, req *codec.Frame, rsp
 
 func RegisterHealthServiceServer(s server.Server, sh HealthServiceServer, opts ...server.HandlerOption) error {
 	type healthService interface {
+		Healthy(ctx context.Context, req *codec.Frame, rsp *codec.Frame) error
 		Live(ctx context.Context, req *codec.Frame, rsp *codec.Frame) error
 		Ready(ctx context.Context, req *codec.Frame, rsp *codec.Frame) error
 		Version(ctx context.Context, req *codec.Frame, rsp *codec.Frame) error

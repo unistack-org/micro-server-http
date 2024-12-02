@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.unistack.org/micro/v3/broker"
@@ -34,6 +35,9 @@ type Server struct {
 	errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
 	pathHandlers *rhttp.Trie
 	opts         server.Options
+	stateLive    *atomic.Uint32
+	stateReady   *atomic.Uint32
+	stateHealth  *atomic.Uint32
 	registerRPC  bool
 	sync.RWMutex
 	registered bool
@@ -117,10 +121,7 @@ func (h *Server) Init(opts ...server.Option) error {
 		h.RUnlock()
 		return err
 	}
-	if err := h.opts.Transport.Init(); err != nil {
-		h.RUnlock()
-		return err
-	}
+
 	h.RUnlock()
 
 	h.Lock()
@@ -592,9 +593,12 @@ func (h *Server) Start() error {
 	}
 
 	go func() {
-		if cerr := hs.Serve(ts); cerr != nil && !errors.Is(cerr, net.ErrClosed) {
+		if cerr := hs.Serve(ts); cerr != nil && !errors.Is(cerr, http.ErrServerClosed) {
 			h.opts.Logger.Error(h.opts.Context, "serve error", cerr)
 		}
+		h.stateLive.Store(0)
+		h.stateReady.Store(0)
+		h.stateHealth.Store(0)
 	}()
 
 	go func() {
@@ -670,6 +674,10 @@ func (h *Server) Start() error {
 		ch <- err
 	}()
 
+	h.stateLive.Store(1)
+	h.stateReady.Store(1)
+	h.stateHealth.Store(1)
+
 	return nil
 }
 
@@ -687,6 +695,18 @@ func (h *Server) Name() string {
 	return h.opts.Name
 }
 
+func (h *Server) Live() bool {
+	return h.stateLive.Load() == 1
+}
+
+func (h *Server) Ready() bool {
+	return h.stateReady.Load() == 1
+}
+
+func (h *Server) Health() bool {
+	return h.stateHealth.Load() == 1
+}
+
 func NewServer(opts ...server.Option) *Server {
 	options := server.NewOptions(opts...)
 	eh := DefaultErrorHandler
@@ -694,6 +714,9 @@ func NewServer(opts ...server.Option) *Server {
 		eh = v
 	}
 	return &Server{
+		stateLive:    &atomic.Uint32{},
+		stateReady:   &atomic.Uint32{},
+		stateHealth:  &atomic.Uint32{},
 		opts:         options,
 		exit:         make(chan chan error),
 		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),

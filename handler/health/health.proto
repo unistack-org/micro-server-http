@@ -8,6 +8,22 @@ import "openapiv3/annotations.proto";
 import "codec/frame.proto";
 
 service HealthService {
+  rpc Healthy(micro.codec.Frame) returns (micro.codec.Frame) {
+		option (micro.openapiv3.openapiv3_operation) = {
+      operation_id: "Healthy";
+      responses: {
+        default: {
+          reference: {
+            _ref: "micro.codec.Frame";
+          };
+        };
+      };
+    };
+		option (micro.api.http) = { 
+      get: "/health";
+      additional_bindings: { get: "/healthz"; }
+    };
+  };
 	rpc Live(micro.codec.Frame) returns (micro.codec.Frame) {
 		option (micro.openapiv3.openapiv3_operation) = {
       operation_id: "Live";
@@ -19,7 +35,10 @@ service HealthService {
         };
       };
     };
-		option (micro.api.http) = { get: "/live"; };
+		option (micro.api.http) = { 
+      get: "/live";
+      additional_bindings: { get: "/livez"; }
+    };
   };
 	rpc Ready(micro.codec.Frame) returns (micro.codec.Frame) {
 		option (micro.openapiv3.openapiv3_operation) = {
@@ -32,7 +51,9 @@ service HealthService {
         };
       };
     };
-		option (micro.api.http) = { get: "/ready"; };
+		option (micro.api.http) = { get: "/ready";
+      additional_bindings: { get: "/readyz"; }
+    };
   };
 	rpc Version(micro.codec.Frame) returns (micro.codec.Frame) {
 		option (micro.openapiv3.openapiv3_operation) = {
