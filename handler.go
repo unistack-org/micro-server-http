@@ -382,6 +382,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	md["Host"] = r.Host
 	md["RequestURI"] = r.RequestURI
 	ctx = metadata.NewIncomingContext(ctx, md)
+	ctx = metadata.NewOutgoingContext(ctx, metadata.New(0))
 
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/") {
