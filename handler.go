@@ -199,8 +199,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 
 		cf, err := h.newCodec(ct)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			w.WriteHeader(http.StatusUnsupportedMediaType)
 			return
 		}
 
@@ -312,7 +311,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 		if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
 			if cf, err = h.newCodec(nct); err != nil {
-				h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
+				h.errorHandler(ctx, nil, w, r, err, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -679,7 +678,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
 		if cf, err = h.newCodec(nct); err != nil {
-			h.errorHandler(ctx, nil, w, r, err, http.StatusBadRequest)
+			h.errorHandler(ctx, nil, w, r, err, http.StatusInternalServerError)
 			return
 		}
 	}
