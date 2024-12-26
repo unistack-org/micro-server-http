@@ -17,7 +17,6 @@ import (
 	"go.unistack.org/micro/v3/metadata"
 	"go.unistack.org/micro/v3/meter"
 	"go.unistack.org/micro/v3/options"
-	"go.unistack.org/micro/v3/register"
 	"go.unistack.org/micro/v3/semconv"
 	"go.unistack.org/micro/v3/server"
 	"go.unistack.org/micro/v3/tracer"
@@ -46,7 +45,6 @@ type httpHandler struct {
 	hd       interface{}
 	handlers *rhttp.Trie
 	name     string
-	eps      []*register.Endpoint
 	sopts    server.Options
 	sync.RWMutex
 }
@@ -57,10 +55,6 @@ func (h *httpHandler) Name() string {
 
 func (h *httpHandler) Handler() interface{} {
 	return h.hd
-}
-
-func (h *httpHandler) Endpoints() []*register.Endpoint {
-	return h.eps
 }
 
 func (h *httpHandler) Options() server.HandlerOptions {
