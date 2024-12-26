@@ -163,16 +163,7 @@ func (h *Server) Handle(handler server.Handler) error {
 func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) server.Handler {
 	options := server.NewHandlerOptions(opts...)
 
-	eps := make([]*register.Endpoint, 0, len(options.Metadata))
-	for name, metadata := range options.Metadata {
-		eps = append(eps, &register.Endpoint{
-			Name:     name,
-			Metadata: metadata,
-		})
-	}
-
 	hdlr := &httpHandler{
-		eps:      eps,
 		hd:       handler,
 		opts:     options,
 		sopts:    h.opts,
@@ -343,11 +334,7 @@ func (h *Server) Subscribe(sb server.Subscriber) error {
 }
 
 func (h *Server) Register() error {
-	var eps []*register.Endpoint
 	h.RLock()
-	for _, hdlr := range h.handlers {
-		eps = append(eps, hdlr.Endpoints()...)
-	}
 	rsvc := h.rsvc
 	config := h.opts
 	h.RUnlock()
@@ -364,8 +351,6 @@ func (h *Server) Register() error {
 	if err != nil {
 		return err
 	}
-	service.Nodes[0].Metadata["protocol"] = "http"
-	service.Endpoints = eps
 
 	h.Lock()
 	subscriberList := make([]*httpSubscriber, 0, len(h.subscribers))
@@ -377,9 +362,6 @@ func (h *Server) Register() error {
 		return subscriberList[i].topic > subscriberList[j].topic
 	})
 
-	for _, e := range subscriberList {
-		service.Endpoints = append(service.Endpoints, e.Endpoints()...)
-	}
 	h.Unlock()
 
 	h.RLock()
