@@ -152,7 +152,7 @@ func (s *Server) createSubHandler(sb *httpSubscriber, opts server.Options) broke
 				return nil
 			}
 
-			opts.Hooks.EachNext(func(hook options.Hook) {
+			opts.Hooks.EachPrev(func(hook options.Hook) {
 				if h, ok := hook.(server.HookSubHandler); ok {
 					fn = h(fn)
 				}

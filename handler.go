@@ -172,7 +172,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 						hdlr := shdlr.(*httpHandler)
 						fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
 						if err == nil {
-							match = true
+							// match = true
 							for k, v := range mp {
 								matches[k] = v
 							}
@@ -278,7 +278,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		// wrap the handler func
-		h.opts.Hooks.EachNext(func(hook options.Hook) {
+		h.opts.Hooks.EachPrev(func(hook options.Hook) {
 			if h, ok := hook.(server.HookHandler); ok {
 				fn = h(fn)
 			}
@@ -589,6 +589,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Body != nil {
 		var buf []byte
 		buf, err = io.ReadAll(r.Body)
+		r.Body.Close()
 		if err != nil && err != io.EOF {
 			h.errorHandler(ctx, handler, w, r, err, http.StatusInternalServerError)
 			return
@@ -645,7 +646,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return err
 	}
 
-	h.opts.Hooks.EachNext(func(hook options.Hook) {
+	h.opts.Hooks.EachPrev(func(hook options.Hook) {
 		if h, ok := hook.(server.HookHandler); ok {
 			fn = h(fn)
 		}

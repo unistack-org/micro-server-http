@@ -1,8 +1,6 @@
 package http
 
 import (
-	"io"
-
 	"go.unistack.org/micro/v3/codec"
 	"go.unistack.org/micro/v3/metadata"
 	"go.unistack.org/micro/v3/server"
@@ -14,7 +12,7 @@ var (
 )
 
 type rpcRequest struct {
-	rw          io.ReadWriter
+	// rw          io.ReadWriter
 	payload     interface{}
 	codec       codec.Codec
 	header      metadata.Metadata
