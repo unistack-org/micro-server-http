@@ -9,18 +9,16 @@ import (
 	"net"
 	"net/http"
 	"reflect"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"go.unistack.org/micro/v3/broker"
-	"go.unistack.org/micro/v3/codec"
-	"go.unistack.org/micro/v3/logger"
-	"go.unistack.org/micro/v3/register"
-	"go.unistack.org/micro/v3/server"
-	rhttp "go.unistack.org/micro/v3/util/http"
+	"go.unistack.org/micro/v4/codec"
+	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/register"
+	"go.unistack.org/micro/v4/server"
+	rhttp "go.unistack.org/micro/v4/util/http"
 	"golang.org/x/net/netutil"
 )
 
@@ -31,7 +29,6 @@ type Server struct {
 	rsvc         *register.Service
 	handlers     map[string]server.Handler
 	exit         chan chan error
-	subscribers  map[*httpSubscriber][]broker.Subscriber
 	errorHandler func(context.Context, server.Handler, http.ResponseWriter, *http.Request, error, int)
 	pathHandlers *rhttp.Trie
 	opts         server.Options
@@ -172,17 +169,6 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 
 	tp := reflect.TypeOf(handler)
 
-	/*
-		if len(options.Metadata) == 0 {
-			if h.registerRPC {
-				h.opts.Logger.Infof(h.opts.Context, "register rpc handler for http.MethodPost %s /%s", hn, hn)
-				if err := hdlr.handlers.Insert([]string{http.MethodPost}, "/"+hn, pth); err != nil {
-					h.opts.Logger.Errorf(h.opts.Context, "cant add rpc handler for http.MethodPost %s /%s", hn, hn)
-				}
-			}
-		}
-	*/
-
 	registerCORS := false
 	if v, ok := options.Context.Value(registerCORSHandlerKey{}).(bool); ok && v {
 		registerCORS = true
@@ -220,13 +206,16 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 		pth := &patHandler{mtype: mtype, name: name, rcvr: rcvr}
 		hdlr.name = name
 
-		methods := []string{md["Method"]}
+		methods := md["Method"]
 		if registerCORS {
 			methods = append(methods, http.MethodOptions)
 		}
 
-		if err := hdlr.handlers.Insert(methods, md["Path"], pth); err != nil {
-			h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add handler for %v %s", methods, md["Path"]))
+		pattern := md["Path"]
+		for i := len(pattern) - 1; i >= 0; i-- {
+			if err := hdlr.handlers.Insert(methods, pattern[i], pth); err != nil {
+				h.opts.Logger.Error(h.opts.Context, fmt.Sprintf("cant add handler for %v %s: index %d", methods, md["Path"], i))
+			}
 		}
 
 		if h.registerRPC {
@@ -304,35 +293,6 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 	return hdlr
 }
 
-func (h *Server) NewSubscriber(topic string, handler interface{}, opts ...server.SubscriberOption) server.Subscriber {
-	return newSubscriber(topic, handler, opts...)
-}
-
-func (h *Server) Subscribe(sb server.Subscriber) error {
-	sub, ok := sb.(*httpSubscriber)
-	if !ok {
-		return fmt.Errorf("invalid subscriber: expected *httpSubscriber")
-	}
-	if len(sub.handlers) == 0 {
-		return fmt.Errorf("invalid subscriber: no handler functions")
-	}
-
-	if err := server.ValidateSubscriber(sb); err != nil {
-		return err
-	}
-
-	h.RLock()
-	_, ok = h.subscribers[sub]
-	h.RUnlock()
-	if ok {
-		return fmt.Errorf("subscriber %v already exists", h)
-	}
-	h.Lock()
-	h.subscribers[sub] = nil
-	h.Unlock()
-	return nil
-}
-
 func (h *Server) Register() error {
 	h.RLock()
 	rsvc := h.rsvc
@@ -351,18 +311,6 @@ func (h *Server) Register() error {
 	if err != nil {
 		return err
 	}
-
-	h.Lock()
-	subscriberList := make([]*httpSubscriber, 0, len(h.subscribers))
-	for e := range h.subscribers {
-		// Only advertise non internal subscribers
-		subscriberList = append(subscriberList, e)
-	}
-	sort.Slice(subscriberList, func(i, j int) bool {
-		return subscriberList[i].topic > subscriberList[j].topic
-	})
-
-	h.Unlock()
 
 	h.RLock()
 	registered := h.registered
@@ -389,35 +337,6 @@ func (h *Server) Register() error {
 	h.registered = true
 	h.rsvc = service
 	h.Unlock()
-
-	return nil
-}
-
-func (h *Server) subscribe() error {
-	config := h.opts
-
-	for sb := range h.subscribers {
-		handler := h.createSubHandler(sb, config)
-		var opts []broker.SubscribeOption
-		if queue := sb.Options().Queue; len(queue) > 0 {
-			opts = append(opts, broker.SubscribeGroup(queue))
-		}
-
-		subCtx := config.Context
-		if cx := sb.Options().Context; cx != nil {
-			subCtx = cx
-		}
-		opts = append(opts, broker.SubscribeContext(subCtx))
-		opts = append(opts, broker.SubscribeAutoAck(sb.Options().AutoAck))
-		opts = append(opts, broker.SubscribeBodyOnly(sb.Options().BodyOnly))
-
-		sub, err := config.Broker.Subscribe(subCtx, sb.Topic(), handler, opts...)
-		if err != nil {
-			h.Unlock()
-			return err
-		}
-		h.subscribers[sb] = []broker.Subscriber{sub}
-	}
 
 	return nil
 }
@@ -450,22 +369,6 @@ func (h *Server) Deregister() error {
 
 	h.registered = false
 
-	subCtx := h.opts.Context
-	for sb, subs := range h.subscribers {
-		if cx := sb.Options().Context; cx != nil {
-			subCtx = cx
-		}
-
-		for _, sub := range subs {
-			config.Logger.Info(config.Context, "Unsubscribing from topic: "+sub.Topic())
-			if err := sub.Unsubscribe(subCtx); err != nil {
-				h.Unlock()
-				config.Logger.Error(config.Context, fmt.Sprintf("failed to unsubscribe topic: %s, error", sb.Topic()), err)
-				return err
-			}
-		}
-		h.subscribers[sb] = nil
-	}
 	h.Unlock()
 	return nil
 }
@@ -550,10 +453,6 @@ func (h *Server) Start() error {
 		if err = h.Register(); err != nil {
 			return err
 		}
-	}
-
-	if err := h.subscribe(); err != nil {
-		return err
 	}
 
 	fn := handler
@@ -701,7 +600,6 @@ func NewServer(opts ...server.Option) *Server {
 		stateHealth:  &atomic.Uint32{},
 		opts:         options,
 		exit:         make(chan chan error),
-		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),
 		errorHandler: eh,
 		pathHandlers: rhttp.NewTrie(),
 	}

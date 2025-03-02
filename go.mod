@@ -1,14 +1,13 @@
-module go.unistack.org/micro-server-http/v3
+module go.unistack.org/micro-server-http/v4
 
-go 1.22.0
-
+go 1.23.0
 
 require (
-	go.unistack.org/micro-client-http/v3 v3.9.15
-	go.unistack.org/micro-codec-yaml/v3 v3.10.3
-	go.unistack.org/micro-proto/v3 v3.4.1
-	go.unistack.org/micro/v3 v3.11.30
-	golang.org/x/net v0.33.0
+	go.unistack.org/micro-client-http/v4 v4.1.0
+	go.unistack.org/micro-codec-yaml/v4 v4.1.0
+	go.unistack.org/micro-proto/v4 v4.1.0
+	go.unistack.org/micro/v4 v4.1.2
+	golang.org/x/net v0.35.0
 )
 
 require (
@@ -17,9 +16,10 @@ require (
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/matoous/go-nanoid v1.5.1 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8 // indirect
-	google.golang.org/grpc v1.69.2 // indirect
-	google.golang.org/protobuf v1.36.1 // indirect
+	github.com/spf13/cast v1.7.1 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250227231956-55c901821b1e // indirect
+	google.golang.org/grpc v1.70.0 // indirect
+	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

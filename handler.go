@@ -12,16 +12,16 @@ import (
 	"sync"
 	"time"
 
-	"go.unistack.org/micro/v3/errors"
-	"go.unistack.org/micro/v3/logger"
-	"go.unistack.org/micro/v3/metadata"
-	"go.unistack.org/micro/v3/meter"
-	"go.unistack.org/micro/v3/options"
-	"go.unistack.org/micro/v3/semconv"
-	"go.unistack.org/micro/v3/server"
-	"go.unistack.org/micro/v3/tracer"
-	rhttp "go.unistack.org/micro/v3/util/http"
-	rflutil "go.unistack.org/micro/v3/util/reflect"
+	"go.unistack.org/micro/v4/errors"
+	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/metadata"
+	"go.unistack.org/micro/v4/meter"
+	"go.unistack.org/micro/v4/options"
+	"go.unistack.org/micro/v4/semconv"
+	"go.unistack.org/micro/v4/server"
+	"go.unistack.org/micro/v4/tracer"
+	rhttp "go.unistack.org/micro/v4/util/http"
+	rflutil "go.unistack.org/micro/v4/util/reflect"
 )
 
 var (
@@ -110,20 +110,21 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 			md = metadata.New(len(r.Header) + 8)
 		}
 		for k, v := range r.Header {
-			md[k] = strings.Join(v, ", ")
+			md[k] = append(md[k], v...)
 		}
-		md["RemoteAddr"] = r.RemoteAddr
-		md["Method"] = r.Method
-		md["URL"] = r.URL.String()
-		md["Proto"] = r.Proto
-		md["Content-Length"] = fmt.Sprintf("%d", r.ContentLength)
-		md["Transfer-Encoding"] = strings.Join(r.TransferEncoding, ",")
-		md["Host"] = r.Host
-		md["RequestURI"] = r.RequestURI
+
+		md["RemoteAddr"] = append(md["RemoteAddr"], r.RemoteAddr)
+		md["Method"] = append(md["Method"], r.Method)
+		md["URL"] = append(md["URL"], r.URL.String())
+		md["Proto"] = append(md["Proto"], r.Proto)
+		md["Content-Length"] = append(md["Content-Length"], fmt.Sprintf("%d", r.ContentLength))
+		md["Transfer-Encoding"] = append(md["Transfer-Encoding"], r.TransferEncoding...)
+		md["Host"] = append(md["Host"], r.Host)
+		md["RequestURI"] = append(md["RequestURI"], r.RequestURI)
 		if r.TLS != nil {
-			md["TLS"] = "true"
-			md["TLS-ALPN"] = r.TLS.NegotiatedProtocol
-			md["TLS-ServerName"] = r.TLS.ServerName
+			md["TLS"] = append(md["TLS"], "true")
+			md["TLS-ALPN"] = append(md["TLS-ALPN"], r.TLS.NegotiatedProtocol)
+			md["TLS-ServerName"] = append(md["TLS-ServerName"], r.TLS.ServerName)
 		}
 
 		ctx = metadata.NewIncomingContext(ctx, md)
@@ -160,18 +161,20 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		if !match && h.registerRPC {
 			microMethod, mok := md.Get(metadata.HeaderEndpoint)
 			if mok {
-				serviceMethod := strings.Split(microMethod, ".")
-				if len(serviceMethod) == 2 {
-					if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
-						hdlr := shdlr.(*httpHandler)
-						fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
-						if err == nil {
-							// match = true
-							for k, v := range mp {
-								matches[k] = v
+				for i := range microMethod {
+					serviceMethod := strings.Split(microMethod[i], ".")
+					if len(serviceMethod) == 2 {
+						if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
+							hdlr := shdlr.(*httpHandler)
+							fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod[i])
+							if err == nil {
+								// match = true
+								for k, v := range mp {
+									matches[k] = v
+								}
+								hldr = fh.(*patHandler)
+								handler = hdlr
 							}
-							hldr = fh.(*patHandler)
-							handler = hdlr
 						}
 					}
 				}
@@ -263,10 +266,10 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 			}
 			if nmd, ok := metadata.FromOutgoingContext(fctx); ok {
 				for k, v := range nmd {
-					md.Set(k, v)
+					md[k] = append(md[k], v...)
 				}
 			}
-			metadata.SetOutgoingContext(ctx, md)
+			ctx = metadata.NewOutgoingContext(ctx, md)
 
 			return err
 		}
@@ -293,7 +296,9 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		w.Header().Set(metadata.HeaderContentType, ct)
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
 			for k, v := range md {
-				w.Header().Set(k, v)
+				for i := range v {
+					w.Header().Set(k, v[i])
+				}
 			}
 		}
 		if md := getRspHeader(ctx); md != nil {
@@ -357,23 +362,24 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		md = metadata.New(len(r.Header) + 8)
 	}
 	for k, v := range r.Header {
-		md[k] = strings.Join(v, ", ")
+		md[k] = append(md[k], v...)
 	}
-	md["RemoteAddr"] = r.RemoteAddr
+
+	md["RemoteAddr"] = append(md["RemoteAddr"], r.RemoteAddr)
 	if r.TLS != nil {
-		md["Scheme"] = "https"
+		md["Scheme"] = append(md["Scheme"], "https")
 	} else {
-		md["Scheme"] = "http"
+		md["Scheme"] = append(md["Scheme"], "http")
 	}
-	md["Method"] = r.Method
-	md["URL"] = r.URL.String()
-	md["Proto"] = r.Proto
-	md["ContentLength"] = fmt.Sprintf("%d", r.ContentLength)
+	md["Method"] = append(md["Method"], r.Method)
+	md["URL"] = append(md["URL"], r.URL.String())
+	md["Proto"] = append(md["Proto"], r.Proto)
+	md["Content-Length"] = append(md["Content-Length"], fmt.Sprintf("%d", r.ContentLength))
 	if len(r.TransferEncoding) > 0 {
-		md["TransferEncoding"] = strings.Join(r.TransferEncoding, ",")
+		md["TransferEncoding"] = append(md["Content-Length"], r.TransferEncoding...)
 	}
-	md["Host"] = r.Host
-	md["RequestURI"] = r.RequestURI
+	md["Host"] = append(md["Host"], r.Host)
+	md["RequestURI"] = append(md["RequestURI"], r.RequestURI)
 	ctx = metadata.NewIncomingContext(ctx, md)
 	ctx = metadata.NewOutgoingContext(ctx, metadata.New(0))
 
@@ -409,18 +415,20 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !match && h.registerRPC {
 		microMethod, mok := md.Get(metadata.HeaderEndpoint)
 		if mok {
-			serviceMethod := strings.Split(microMethod, ".")
-			if len(serviceMethod) == 2 {
-				if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
-					hdlr := shdlr.(*httpHandler)
-					fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
-					if err == nil {
-						match = true
-						for k, v := range mp {
-							matches[k] = v
+			for i := range microMethod {
+				serviceMethod := strings.Split(microMethod[i], ".")
+				if len(serviceMethod) == 2 {
+					if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
+						hdlr := shdlr.(*httpHandler)
+						fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod[i])
+						if err == nil {
+							match = true
+							for k, v := range mp {
+								matches[k] = v
+							}
+							hldr = fh.(*patHandler)
+							handler = hdlr
 						}
-						hldr = fh.(*patHandler)
-						handler = hdlr
 					}
 				}
 			}
@@ -628,10 +636,10 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if nmd, ok := metadata.FromOutgoingContext(fctx); ok {
 			for k, v := range nmd {
-				md.Set(k, v)
+				md[k] = append(md[k], v...)
 			}
 		}
-		metadata.SetOutgoingContext(ctx, md)
+		ctx = metadata.NewOutgoingContext(ctx, md)
 
 		if err != nil && sp != nil {
 			sp.SetStatus(tracer.SpanStatusError, err.Error())
@@ -661,7 +669,9 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(metadata.HeaderContentType, ct)
 	if md, ok := metadata.FromOutgoingContext(ctx); ok {
 		for k, v := range md {
-			w.Header().Set(k, v)
+			for i := range v {
+				w.Header().Set(k, v[i])
+			}
 		}
 	}
 	if md := getRspHeader(ctx); md != nil {

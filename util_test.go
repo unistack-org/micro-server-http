@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.unistack.org/micro/v3/metadata"
-	"go.unistack.org/micro/v3/options"
-	"go.unistack.org/micro/v3/server"
+	"go.unistack.org/micro/v4/metadata"
+	"go.unistack.org/micro/v4/options"
+	"go.unistack.org/micro/v4/server"
 )
 
 func Test_Hook(t *testing.T) {

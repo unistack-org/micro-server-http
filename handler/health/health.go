@@ -3,8 +3,8 @@ package health_handler
 import (
 	"context"
 
-	codecpb "go.unistack.org/micro-proto/v3/codec"
-	"go.unistack.org/micro/v3/errors"
+	codecpb "go.unistack.org/micro-proto/v4/codec"
+	"go.unistack.org/micro/v4/errors"
 )
 
 var _ HealthServiceServer = &Handler{}

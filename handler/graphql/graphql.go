@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/99designs/gqlgen/graphql"
-	"go.unistack.org/micro/v3/logger"
-	"go.unistack.org/micro/v3/store"
+	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/store"
 )
 
 var _ graphql.Cache = (*cacheWrapper)(nil)
