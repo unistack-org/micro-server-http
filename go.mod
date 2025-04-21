@@ -1,13 +1,14 @@
 module go.unistack.org/micro-server-http/v3
 
-go 1.22.0
+go 1.22.2
 
+toolchain go1.24.2
 
 require (
 	go.unistack.org/micro-client-http/v3 v3.9.15
 	go.unistack.org/micro-codec-yaml/v3 v3.10.3
 	go.unistack.org/micro-proto/v3 v3.4.1
-	go.unistack.org/micro/v3 v3.11.30
+	go.unistack.org/micro/v3 v3.11.41
 	golang.org/x/net v0.33.0
 )
 
