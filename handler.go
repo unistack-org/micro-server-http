@@ -103,8 +103,9 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 			ct = htype
 		}
 
-		ctx := context.WithValue(r.Context(), rspCodeKey{}, &rspCodeVal{})
-		ctx = context.WithValue(ctx, rspHeaderKey{}, &rspHeaderVal{})
+		ctx := context.WithValue(r.Context(), rspStatusCodeKey{}, &rspStatusCodeVal{})
+		ctx = context.WithValue(ctx, rspMetadataKey{}, &rspMetadataVal{})
+
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			md = metadata.New(len(r.Header) + 8)
@@ -128,6 +129,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		ctx = metadata.NewIncomingContext(ctx, md)
+		ctx = metadata.NewOutgoingContext(ctx, metadata.New(0))
 
 		path := r.URL.Path
 
@@ -260,17 +262,6 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 				err = rerr.(error)
 			}
 
-			md, ok := metadata.FromOutgoingContext(ctx)
-			if !ok {
-				md = metadata.New(0)
-			}
-			if nmd, ok := metadata.FromOutgoingContext(fctx); ok {
-				for k, v := range nmd {
-					md[k] = append(md[k], v...)
-				}
-			}
-			ctx = metadata.NewOutgoingContext(ctx, md)
-
 			return err
 		}
 
@@ -294,18 +285,9 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		appErr := fn(ctx, hr, replyv.Interface())
 
 		w.Header().Set(metadata.HeaderContentType, ct)
-		if md, ok := metadata.FromOutgoingContext(ctx); ok {
-			for k, v := range md {
-				for i := range v {
-					w.Header().Set(k, v[i])
-				}
-			}
-		}
-		if md := getRspHeader(ctx); md != nil {
-			for k, v := range md {
-				for _, vv := range v {
-					w.Header().Add(k, vv)
-				}
+		for k, v := range getResponseMetadata(ctx) {
+			for _, vv := range v {
+				w.Header().Add(k, vv)
 			}
 		}
 		if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
@@ -335,7 +317,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 			return
 		}
 
-		if nscode := GetRspCode(ctx); nscode != 0 {
+		if nscode := GetResponseStatusCode(ctx); nscode != 0 {
 			scode = nscode
 		}
 		w.WriteHeader(scode)
@@ -354,8 +336,8 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ts := time.Now()
 
-	ctx := context.WithValue(r.Context(), rspCodeKey{}, &rspCodeVal{})
-	ctx = context.WithValue(ctx, rspHeaderKey{}, &rspHeaderVal{})
+	ctx := context.WithValue(r.Context(), rspStatusCodeKey{}, &rspStatusCodeVal{})
+	ctx = context.WithValue(ctx, rspMetadataKey{}, &rspMetadataVal{})
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -376,10 +358,11 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	md["Proto"] = append(md["Proto"], r.Proto)
 	md["Content-Length"] = append(md["Content-Length"], fmt.Sprintf("%d", r.ContentLength))
 	if len(r.TransferEncoding) > 0 {
-		md["TransferEncoding"] = append(md["Content-Length"], r.TransferEncoding...)
+		md["Transfer-Encoding"] = append(md["Transfer-Encoding"], r.TransferEncoding...)
 	}
 	md["Host"] = append(md["Host"], r.Host)
 	md["RequestURI"] = append(md["RequestURI"], r.RequestURI)
+
 	ctx = metadata.NewIncomingContext(ctx, md)
 	ctx = metadata.NewOutgoingContext(ctx, metadata.New(0))
 
@@ -447,7 +430,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					),
 				)
 				defer func() {
-					n := GetRspCode(ctx)
+					n := GetResponseStatusCode(ctx)
 					if s, _ := sp.Status(); s != tracer.SpanStatusError && n > 399 {
 						sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
 					}
@@ -459,7 +442,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName, "server", "http").Inc()
 
 				defer func() {
-					n := GetRspCode(ctx)
+					n := GetResponseStatusCode(ctx)
 					if n > 399 {
 						h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "server", "http", "status", "success", "code", strconv.Itoa(n)).Inc()
 					} else {
@@ -487,7 +470,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			)
 
 			defer func() {
-				if n := GetRspCode(ctx); n > 399 {
+				if n := GetResponseStatusCode(ctx); n > 399 {
 					sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
 				} else {
 					sp.SetStatus(tracer.SpanStatusError, http.StatusText(http.StatusNotFound))
@@ -526,7 +509,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", handler.name, "server", "http").Update(te.Seconds())
 			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", handler.name, "server", "http").Dec()
 
-			n := GetRspCode(ctx)
+			n := GetResponseStatusCode(ctx)
 			if n > 399 {
 				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "server", "http", "status", "failure", "code", strconv.Itoa(n)).Inc()
 			} else {
@@ -536,7 +519,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
-		n := GetRspCode(ctx)
+		n := GetResponseStatusCode(ctx)
 		if n > 399 {
 			if s, _ := sp.Status(); s != tracer.SpanStatusError {
 				sp.SetStatus(tracer.SpanStatusError, http.StatusText(n))
@@ -630,17 +613,6 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			err = rerr.(error)
 		}
 
-		md, ok := metadata.FromOutgoingContext(ctx)
-		if !ok {
-			md = metadata.New(0)
-		}
-		if nmd, ok := metadata.FromOutgoingContext(fctx); ok {
-			for k, v := range nmd {
-				md[k] = append(md[k], v...)
-			}
-		}
-		ctx = metadata.NewOutgoingContext(ctx, md)
-
 		if err != nil && sp != nil {
 			sp.SetStatus(tracer.SpanStatusError, err.Error())
 		}
@@ -667,18 +639,9 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	appErr := fn(ctx, hr, replyv.Interface())
 
 	w.Header().Set(metadata.HeaderContentType, ct)
-	if md, ok := metadata.FromOutgoingContext(ctx); ok {
-		for k, v := range md {
-			for i := range v {
-				w.Header().Set(k, v[i])
-			}
-		}
-	}
-	if md := getRspHeader(ctx); md != nil {
-		for k, v := range md {
-			for _, vv := range v {
-				w.Header().Add(k, vv)
-			}
+	for k, v := range getResponseMetadata(ctx) {
+		for _, vv := range v {
+			w.Header().Add(k, vv)
 		}
 	}
 	if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
@@ -708,7 +671,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			handler.sopts.Logger.Error(handler.sopts.Context, "handler error", err)
 		}
 		scode = http.StatusInternalServerError
-	} else if nscode := GetRspCode(ctx); nscode != 0 {
+	} else if nscode := GetResponseStatusCode(ctx); nscode != 0 {
 		scode = nscode
 	}
 

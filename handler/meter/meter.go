@@ -96,6 +96,7 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 
 	w := io.Writer(buf)
 
+	// Question: who sets the gzip header to outgoing metadata?
 	if md, ok := metadata.FromOutgoingContext(ctx); gzipAccepted(md) && ok && !h.Options.DisableCompress {
 		omd, _ := metadata.FromOutgoingContext(ctx)
 		omd.Set(contentEncodingHeader, "gzip")
