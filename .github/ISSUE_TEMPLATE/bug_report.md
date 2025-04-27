@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: For reporting bugs in go-micro
+about: For reporting bugs in micro
 title: "[BUG]"
 labels: ''
 assignees: ''
@@ -16,9 +16,3 @@ assignees: ''
 **How to reproduce the bug:**
 
 If possible, please include a minimal code snippet here.
-
-**Environment:**
-Go Version: please paste `go version` output here
-```
-please paste `go env` output here
-```
