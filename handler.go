@@ -286,9 +286,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 
 		w.Header().Set(metadata.HeaderContentType, ct)
 		for k, v := range getResponseMetadata(ctx) {
-			for _, vv := range v {
-				w.Header().Add(k, vv)
-			}
+			w.Header()[k] = v
 		}
 		if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
 			if cf, err = h.newCodec(nct); err != nil {
@@ -640,9 +638,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set(metadata.HeaderContentType, ct)
 	for k, v := range getResponseMetadata(ctx) {
-		for _, vv := range v {
-			w.Header().Add(k, vv)
-		}
+		w.Header()[k] = v
 	}
 	if nct := w.Header().Get(metadata.HeaderContentType); nct != ct {
 		if cf, err = h.newCodec(nct); err != nil {
