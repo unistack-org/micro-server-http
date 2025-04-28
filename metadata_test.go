@@ -102,22 +102,22 @@ func TestGetResponseMetadata(t *testing.T) {
 		{
 			name:     "context without response metadata key",
 			ctx:      context.Background(),
-			expected: metadata.Metadata{},
+			expected: nil,
 		},
 		{
 			name:     "context with nil response metadata value",
 			ctx:      context.WithValue(context.Background(), rspMetadataKey{}, nil),
-			expected: metadata.Metadata{},
+			expected: nil,
 		},
 		{
 			name:     "context with incorrect type in response metadata value",
 			ctx:      context.WithValue(context.Background(), rspMetadataKey{}, &struct{}{}),
-			expected: metadata.Metadata{},
+			expected: nil,
 		},
 		{
 			name:     "context with response metadata value, but nil metadata",
 			ctx:      context.WithValue(context.Background(), rspMetadataKey{}, &rspMetadataVal{m: nil}),
-			expected: metadata.Metadata{},
+			expected: nil,
 		},
 		{
 			name: "valid metadata",

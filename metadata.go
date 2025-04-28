@@ -34,14 +34,13 @@ func AppendResponseMetadata(ctx context.Context, md metadata.Metadata) {
 }
 
 // getResponseMetadata retrieves the metadata.Metadata stored in the context.
-// If the value is missing, of the wrong type, or nil, it returns an empty metadata.Metadata.
 //
 // Note: this function is not thread-safe. Synchronization is required if used from multiple goroutines.
 // If you plan to modify the returned metadata, make a full copy to avoid affecting shared state.
 func getResponseMetadata(ctx context.Context) metadata.Metadata {
 	val, ok := ctx.Value(rspMetadataKey{}).(*rspMetadataVal)
 	if !ok || val == nil || val.m == nil {
-		return metadata.Metadata{}
+		return nil
 	}
 
 	return val.m
