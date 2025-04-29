@@ -121,15 +121,7 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 
 // gzipAccepted returns whether the client will accept gzip-encoded content.
 func gzipAccepted(md metadata.Metadata) bool {
-	a, ok := md.Get(acceptEncodingHeader)
-	if !ok {
-		return false
-	}
-	for i := range a {
-		if strings.Contains(a[i], "gzip") {
-			return true
-		}
-	}
+	a := md.GetJoined(acceptEncodingHeader)
 
-	return false
+	return strings.Contains(a, "gzip")
 }
