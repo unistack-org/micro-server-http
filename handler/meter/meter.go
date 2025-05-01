@@ -107,12 +107,16 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 		defer gz.Close()
 
 		w = gz
-		gz.Flush()
 	}
 
 	if err := h.Options.Meter.Write(w, h.Options.MeterOptions...); err != nil {
 		log.Error(ctx, "http/meter write failed", err)
 		return nil
+	}
+
+	// gz.Flush() must be called after writing metrics to ensure buffered data is written to the underlying writer.
+	if gz, ok := w.(*gzip.Writer); ok {
+		gz.Flush()
 	}
 
 	rsp.Data = buf.Bytes()
