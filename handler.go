@@ -104,7 +104,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		ctx := context.WithValue(r.Context(), rspStatusCodeKey{}, &rspStatusCodeVal{})
-		ctx = context.WithValue(ctx, rspMetadataKey{}, &rspMetadataVal{})
+		ctx = context.WithValue(ctx, rspMetadataKey{}, &rspMetadataVal{m: metadata.New(0)})
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
@@ -332,7 +332,7 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ts := time.Now()
 
 	ctx := context.WithValue(r.Context(), rspStatusCodeKey{}, &rspStatusCodeVal{})
-	ctx = context.WithValue(ctx, rspMetadataKey{}, &rspMetadataVal{})
+	ctx = context.WithValue(ctx, rspMetadataKey{}, &rspMetadataVal{m: metadata.New(0)})
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
