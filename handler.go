@@ -161,22 +161,19 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		if !match && h.registerRPC {
-			microMethod, mok := md.Get(metadata.HeaderEndpoint)
-			if mok {
-				for i := range microMethod {
-					serviceMethod := strings.Split(microMethod[i], ".")
-					if len(serviceMethod) == 2 {
-						if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
-							hdlr := shdlr.(*httpHandler)
-							fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod[i])
-							if err == nil {
-								// match = true
-								for k, v := range mp {
-									matches[k] = v
-								}
-								hldr = fh.(*patHandler)
-								handler = hdlr
+			for _, microMethod := range md.Get(metadata.HeaderEndpoint) {
+				serviceMethod := strings.Split(microMethod, ".")
+				if len(serviceMethod) == 2 {
+					if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
+						hdlr := shdlr.(*httpHandler)
+						fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
+						if err == nil {
+							// match = true
+							for k, v := range mp {
+								matches[k] = v
 							}
+							hldr = fh.(*patHandler)
+							handler = hdlr
 						}
 					}
 				}
@@ -394,23 +391,21 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !match && h.registerRPC {
-		microMethod, mok := md.Get(metadata.HeaderEndpoint)
-		if mok {
-			for i := range microMethod {
-				serviceMethod := strings.Split(microMethod[i], ".")
-				if len(serviceMethod) == 2 {
-					if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
-						hdlr := shdlr.(*httpHandler)
-						fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod[i])
-						if err == nil {
-							match = true
-							for k, v := range mp {
-								matches[k] = v
-							}
-							hldr = fh.(*patHandler)
-							handler = hdlr
+		for _, microMethod := range md.Get(metadata.HeaderEndpoint) {
+			serviceMethod := strings.Split(microMethod, ".")
+			if len(serviceMethod) == 2 {
+				if shdlr, ok := h.handlers[serviceMethod[0]]; ok {
+					hdlr := shdlr.(*httpHandler)
+					fh, mp, err := hdlr.handlers.Search(http.MethodPost, "/"+microMethod)
+					if err == nil {
+						match = true
+						for k, v := range mp {
+							matches[k] = v
 						}
+						hldr = fh.(*patHandler)
+						handler = hdlr
 					}
+
 				}
 			}
 		}

@@ -1,15 +1,17 @@
-name: lint
+name: test
 
 on:
   pull_request:
     types: [opened, reopened, synchronize]
-    branches:
-    - master
-    - v3
-    - v4
+    branches: [ master, v3, v4 ]
+  push:
+    branches: [ master, v3, v4 ]
+    paths-ignore:
+      - '.github/**'
+      - '.gitea/**'
 
 jobs:
-  lint:
+  test:
     runs-on: ubuntu-latest
     steps:
     - name: checkout code
@@ -20,10 +22,10 @@ jobs:
       uses: actions/setup-go@v5
       with:
         cache-dependency-path: "**/*.sum"
-        go-version: 'stable' 
+        go-version: 'stable'
     - name: setup deps
       run: go get -v ./...
-    - name: run lint
-      uses: https://github.com/golangci/golangci-lint-action@v6
-      with:
-        version: 'latest'
+    - name: run test
+      env:
+        INTEGRATION_TESTS: yes
+      run: go test -mod readonly -v ./...

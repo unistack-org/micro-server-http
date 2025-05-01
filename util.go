@@ -23,8 +23,8 @@ func FillRequest(ctx context.Context, req interface{}, opts ...FillRequestOption
 
 	for idx := 0; idx < len(options.headers)/2; idx += 2 {
 		k := options.headers[idx]
-		v, ok := md.Get(k)
-		if !ok {
+		v := md.Get(k)
+		if v == nil {
 			continue
 		}
 
@@ -38,7 +38,7 @@ func FillRequest(ctx context.Context, req interface{}, opts ...FillRequestOption
 		}
 	}
 
-	cookieVals, _ := md.Get("Cookie")
+	cookieVals := md.Get("Cookie")
 	for i := range cookieVals {
 		cookies := strings.Split(cookieVals[i], ";")
 		cmd := make(map[string]string, len(cookies))
