@@ -6,6 +6,6 @@ import (
 )
 
 func TestHandler(t *testing.T) {
-	ctx := context.WithValue(context.TODO(), rspCodeKey{}, &rspCodeVal{})
-	SetRspCode(ctx, 404)
+	ctx := context.WithValue(context.TODO(), rspStatusCodeKey{}, &rspStatusCodeVal{})
+	SetResponseStatusCode(ctx, 404)
 }
