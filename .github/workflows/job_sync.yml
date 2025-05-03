@@ -3,11 +3,6 @@ name: sync
 on:
   schedule:
     - cron: '*/5 * * * *'
-#  push:
-#    branches: [ master, v3, v4 ]
-#    paths-ignore:
-#      - '.github/**'
-#      - '.gitea/**'
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -27,10 +22,11 @@ jobs:
       run: |
         git clone --filter=blob:none --filter=tree:0 --branch master --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
         cd repo
-        git remote add --no-tags --track master upstream https://github.com/${GITHUB_REPOSITORY}
-        git pull --rebase upstream master
-        git push upstream master --progress
-        git push origin master --progress
+        git remote add --no-tags --fetch --track master upstream https://github.com/${GITHUB_REPOSITORY}
+        git diff --stat master upstream/master
+        git pull -v --rebase upstream master
+        git push upstream master -v --progress
+        git push origin master -v --progress
         cd ../
         rm -rf repo
 
@@ -39,9 +35,10 @@ jobs:
         git clone --filter=blob:none --filter=tree:0 --branch v3 --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
         cd repo
         git remote add --no-tags --fetch --track v3 upstream https://github.com/${GITHUB_REPOSITORY}
-        git pull --rebase upstream v3
-        git push upstream v3
-        git push origin v3 --progress
+        git diff --stat v3 upstream/v3
+        git pull -v --rebase upstream v3
+        git push upstream v3 -v --progress
+        git push origin v3 -v --progress
         cd ../
         rm -rf repo
 
@@ -50,8 +47,9 @@ jobs:
         git clone --filter=blob:none --filter=tree:0 --branch v4 --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
         cd repo
         git remote add --no-tags --fetch --track v4 upstream https://github.com/${GITHUB_REPOSITORY}
-        git pull --rebase upstream v4
-        git push upstream v4
-        git push origin v4 --progress
+        git diff --stat v4 upstream/v4
+        git pull -v --rebase upstream v4
+        git push upstream v4 -v --progress
+        git push origin v4 -v --progress
         cd ../
         rm -rf repo
