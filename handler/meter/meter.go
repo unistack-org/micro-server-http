@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	codecpb "go.unistack.org/micro-proto/v4/codec"
+	httpsrv "go.unistack.org/micro-server-http/v4"
 	"go.unistack.org/micro/v4/logger"
 	"go.unistack.org/micro/v4/metadata"
 	"go.unistack.org/micro/v4/meter"
@@ -96,9 +97,9 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 
 	w := io.Writer(buf)
 
-	if md, ok := metadata.FromOutgoingContext(ctx); gzipAccepted(md) && ok && !h.Options.DisableCompress {
-		omd, _ := metadata.FromOutgoingContext(ctx)
-		omd.Set(contentEncodingHeader, "gzip")
+	if md, ok := metadata.FromIncomingContext(ctx); ok && gzipAccepted(md) && !h.Options.DisableCompress {
+		httpsrv.AppendResponseMetadata(ctx, metadata.Pairs(contentEncodingHeader, "gzip"))
+
 		gz := gzipPool.Get().(*gzip.Writer)
 		defer gzipPool.Put(gz)
 
@@ -106,12 +107,16 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 		defer gz.Close()
 
 		w = gz
-		gz.Flush()
 	}
 
 	if err := h.Options.Meter.Write(w, h.Options.MeterOptions...); err != nil {
 		log.Error(ctx, "http/meter write failed", err)
 		return nil
+	}
+
+	// gz.Flush() must be called after writing metrics to ensure buffered data is written to the underlying writer.
+	if gz, ok := w.(*gzip.Writer); ok {
+		gz.Flush()
 	}
 
 	rsp.Data = buf.Bytes()

@@ -31,51 +31,6 @@ func (err *Error) Error() string {
 	return fmt.Sprintf("%v", err.err)
 }
 
-type (
-	rspCodeKey struct{}
-	rspCodeVal struct {
-		code int
-	}
-)
-
-type (
-	rspHeaderKey struct{}
-	rspHeaderVal struct {
-		h http.Header
-	}
-)
-
-// SetRspHeader add response headers
-func SetRspHeader(ctx context.Context, h http.Header) {
-	if rsp, ok := ctx.Value(rspHeaderKey{}).(*rspHeaderVal); ok {
-		rsp.h = h
-	}
-}
-
-// SetRspCode saves response code in context, must be used by handler to specify http code
-func SetRspCode(ctx context.Context, code int) {
-	if rsp, ok := ctx.Value(rspCodeKey{}).(*rspCodeVal); ok {
-		rsp.code = code
-	}
-}
-
-// getRspHeader get http.Header from context
-func getRspHeader(ctx context.Context) http.Header {
-	if rsp, ok := ctx.Value(rspHeaderKey{}).(*rspHeaderVal); ok {
-		return rsp.h
-	}
-	return nil
-}
-
-// GetRspCode used internally by generated http server handler
-func GetRspCode(ctx context.Context) int {
-	code := int(200)
-	if rsp, ok := ctx.Value(rspCodeKey{}).(*rspCodeVal); ok {
-		code = rsp.code
-	}
-	return code
-}
-
 type middlewareKey struct{}
 
 // Middleware passes http middlewares
