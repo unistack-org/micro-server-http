@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"go.unistack.org/micro/v4/errors"
@@ -46,7 +45,6 @@ type httpHandler struct {
 	handlers *rhttp.Trie
 	name     string
 	sopts    server.Options
-	sync.RWMutex
 }
 
 func (h *httpHandler) Name() string {

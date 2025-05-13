@@ -36,18 +36,18 @@ type Server struct {
 	stateReady   *atomic.Uint32
 	stateHealth  *atomic.Uint32
 	registerRPC  bool
-	sync.RWMutex
-	registered bool
-	init       bool
+	mu           sync.RWMutex
+	registered   bool
+	init         bool
 }
 
 func (h *Server) newCodec(ct string) (codec.Codec, error) {
 	if idx := strings.IndexRune(ct, ';'); idx >= 0 {
 		ct = ct[:idx]
 	}
-	h.RLock()
+	h.mu.RLock()
 	cf, ok := h.opts.Codecs[ct]
-	h.RUnlock()
+	h.mu.RUnlock()
 	if ok {
 		return cf, nil
 	}
@@ -55,9 +55,9 @@ func (h *Server) newCodec(ct string) (codec.Codec, error) {
 }
 
 func (h *Server) Options() server.Options {
-	h.Lock()
+	h.mu.Lock()
 	opts := h.opts
-	h.Unlock()
+	h.mu.Unlock()
 	return opts
 }
 
@@ -66,7 +66,7 @@ func (h *Server) Init(opts ...server.Option) error {
 		return nil
 	}
 
-	h.Lock()
+	h.mu.Lock()
 
 	for _, o := range opts {
 		o(&h.opts)
@@ -89,41 +89,41 @@ func (h *Server) Init(opts ...server.Option) error {
 		for pm, ps := range phs.h {
 			for pp, ph := range ps {
 				if err := h.pathHandlers.Insert([]string{pm}, pp, ph); err != nil {
-					h.Unlock()
+					h.mu.Unlock()
 					return err
 				}
 			}
 		}
 	}
-	h.Unlock()
+	h.mu.Unlock()
 
-	h.RLock()
+	h.mu.RLock()
 	if err := h.opts.Register.Init(); err != nil {
-		h.RUnlock()
+		h.mu.RUnlock()
 		return err
 	}
 	if err := h.opts.Broker.Init(); err != nil {
-		h.RUnlock()
+		h.mu.RUnlock()
 		return err
 	}
 	if err := h.opts.Tracer.Init(); err != nil {
-		h.RUnlock()
+		h.mu.RUnlock()
 		return err
 	}
 	if err := h.opts.Logger.Init(); err != nil {
-		h.RUnlock()
+		h.mu.RUnlock()
 		return err
 	}
 	if err := h.opts.Meter.Init(); err != nil {
-		h.RUnlock()
+		h.mu.RUnlock()
 		return err
 	}
 
-	h.RUnlock()
+	h.mu.RUnlock()
 
-	h.Lock()
+	h.mu.Lock()
 	h.init = true
-	h.Unlock()
+	h.mu.Unlock()
 
 	return nil
 }
@@ -132,27 +132,27 @@ func (h *Server) Handle(handler server.Handler) error {
 	// passed unknown handler
 	hdlr, ok := handler.(*httpHandler)
 	if !ok {
-		h.Lock()
+		h.mu.Lock()
 		h.hd = handler
-		h.Unlock()
+		h.mu.Unlock()
 		return nil
 	}
 
 	// passed http.Handler like some muxer
 	if _, ok := hdlr.hd.(http.Handler); ok {
-		h.Lock()
+		h.mu.Lock()
 		h.hd = handler
-		h.Unlock()
+		h.mu.Unlock()
 		return nil
 	}
 
 	// passed micro compat handler
-	h.Lock()
+	h.mu.Lock()
 	if h.handlers == nil {
 		h.handlers = make(map[string]server.Handler)
 	}
 	h.handlers[handler.Name()] = handler
-	h.Unlock()
+	h.mu.Unlock()
 
 	return nil
 }
@@ -294,10 +294,10 @@ func (h *Server) NewHandler(handler interface{}, opts ...server.HandlerOption) s
 }
 
 func (h *Server) Register() error {
-	h.RLock()
+	h.mu.RLock()
 	rsvc := h.rsvc
 	config := h.opts
-	h.RUnlock()
+	h.mu.RUnlock()
 
 	// if service already filled, reuse it and return early
 	if rsvc != nil {
@@ -312,9 +312,9 @@ func (h *Server) Register() error {
 		return err
 	}
 
-	h.RLock()
+	h.mu.RLock()
 	registered := h.registered
-	h.RUnlock()
+	h.mu.RUnlock()
 
 	if !registered {
 		if config.Logger.V(logger.InfoLevel) {
@@ -332,19 +332,19 @@ func (h *Server) Register() error {
 		return nil
 	}
 
-	h.Lock()
+	h.mu.Lock()
 
 	h.registered = true
 	h.rsvc = service
-	h.Unlock()
+	h.mu.Unlock()
 
 	return nil
 }
 
 func (h *Server) Deregister() error {
-	h.RLock()
+	h.mu.RLock()
 	config := h.opts
-	h.RUnlock()
+	h.mu.RUnlock()
 
 	service, err := server.NewRegisterService(h)
 	if err != nil {
@@ -359,24 +359,24 @@ func (h *Server) Deregister() error {
 		return err
 	}
 
-	h.Lock()
+	h.mu.Lock()
 	h.rsvc = nil
 
 	if !h.registered {
-		h.Unlock()
+		h.mu.Unlock()
 		return nil
 	}
 
 	h.registered = false
 
-	h.Unlock()
+	h.mu.Unlock()
 	return nil
 }
 
 func (h *Server) Start() error {
-	h.RLock()
+	h.mu.RLock()
 	config := h.opts
-	h.RUnlock()
+	h.mu.RUnlock()
 
 	// micro: config.Transport.Listen(config.Address)
 	var ts net.Listener
@@ -406,9 +406,9 @@ func (h *Server) Start() error {
 		config.Logger.Info(config.Context, "Listening on "+ts.Addr().String())
 	}
 
-	h.Lock()
+	h.mu.Lock()
 	h.opts.Address = ts.Addr().String()
-	h.Unlock()
+	h.mu.Unlock()
 
 	var handler http.Handler
 
@@ -499,9 +499,9 @@ func (h *Server) Start() error {
 			select {
 			// register self on interval
 			case <-t.C:
-				h.RLock()
+				h.mu.RLock()
 				registered := h.registered
-				h.RUnlock()
+				h.mu.RUnlock()
 				rerr := config.RegisterCheck(h.opts.Context)
 				// nolint: nestif
 				if rerr != nil && registered {
