@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"io"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -91,32 +91,52 @@ func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.
 		log = logger.DefaultLogger
 	}
 
+	var err error
+
+	if md, ok := metadata.FromIncomingContext(ctx); ok && gzipAccepted(md) && !h.Options.DisableCompress {
+		err = h.writeMetricsGzip(ctx, rsp)
+	} else {
+		err = h.writeMetricsPlain(ctx, rsp)
+	}
+
+	if err != nil {
+		log.Error(ctx, "http/meter write failed", err)
+	}
+
+	return nil
+}
+
+func (h *Handler) writeMetricsGzip(ctx context.Context, rsp *codecpb.Frame) error {
+	httpsrv.AppendResponseMetadata(ctx, metadata.Pairs(contentEncodingHeader, "gzip"))
+
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer bufPool.Put(buf)
 	buf.Reset()
 
-	w := io.Writer(buf)
+	gz := gzipPool.Get().(*gzip.Writer)
+	defer gzipPool.Put(gz)
+	gz.Reset(buf)
 
-	if md, ok := metadata.FromIncomingContext(ctx); ok && gzipAccepted(md) && !h.Options.DisableCompress {
-		httpsrv.AppendResponseMetadata(ctx, metadata.Pairs(contentEncodingHeader, "gzip"))
-
-		gz := gzipPool.Get().(*gzip.Writer)
-		defer gzipPool.Put(gz)
-
-		gz.Reset(w)
-		defer gz.Close()
-
-		w = gz
+	if err := h.Options.Meter.Write(gz, h.Options.MeterOptions...); err != nil {
+		return fmt.Errorf("meter write: %w", err)
 	}
 
-	if err := h.Options.Meter.Write(w, h.Options.MeterOptions...); err != nil {
-		log.Error(ctx, "http/meter write failed", err)
-		return nil
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("gzip close: %w", err)
 	}
 
-	// gz.Flush() must be called after writing metrics to ensure buffered data is written to the underlying writer.
-	if gz, ok := w.(*gzip.Writer); ok {
-		gz.Flush()
+	rsp.Data = buf.Bytes()
+
+	return nil
+}
+
+func (h *Handler) writeMetricsPlain(_ context.Context, rsp *codecpb.Frame) error {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buf)
+	buf.Reset()
+
+	if err := h.Options.Meter.Write(buf, h.Options.MeterOptions...); err != nil {
+		return fmt.Errorf("meter write: %w", err)
 	}
 
 	rsp.Data = buf.Bytes()
