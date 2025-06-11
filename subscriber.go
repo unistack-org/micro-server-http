@@ -88,6 +88,7 @@ func (s *Server) createSubHandler(sb *httpSubscriber, opts server.Options) broke
 
 		hdr := metadata.Copy(msg.Header)
 		ctx := metadata.NewIncomingContext(context.Background(), hdr)
+		ctx = metadata.NewOutgoingContext(ctx, metadata.New(0))
 
 		results := make(chan error, len(sb.handlers))
 
