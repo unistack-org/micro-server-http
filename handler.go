@@ -127,6 +127,7 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 		}
 
 		ctx = metadata.NewIncomingContext(ctx, md)
+		ctx = metadata.NewOutgoingContext(ctx, metadata.New(0))
 
 		path := r.URL.Path
 
