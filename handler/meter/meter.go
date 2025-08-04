@@ -5,6 +5,8 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
+	http "net/http"
 	"strings"
 	"sync"
 
@@ -83,6 +85,33 @@ func NewOptions(opts ...Option) Options {
 func NewHandler(opts ...Option) *Handler {
 	options := NewOptions(opts...)
 	return &Handler{Options: options}
+}
+
+func (h *Handler) HTTPHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	var wr io.Writer
+	if v := r.Header.Get(acceptEncodingHeader); strings.Contains(v, "gzip") && !h.Options.DisableCompress {
+		w.Header().Add(contentEncodingHeader, "gzip")
+
+		gz := gzipPool.Get().(*gzip.Writer)
+		defer gzipPool.Put(gz)
+
+		gz.Reset(w)
+		defer gz.Close()
+
+		wr = gz
+	} else {
+		wr = w
+	}
+
+	if err := h.Options.Meter.Write(wr, h.Options.MeterOptions...); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// gz.Flush() must be called after writing metrics to ensure buffered data is written to the underlying writer.
+	if gz, ok := wr.(*gzip.Writer); ok {
+		gz.Flush()
+	}
 }
 
 func (h *Handler) Metrics(ctx context.Context, req *codecpb.Frame, rsp *codecpb.Frame) error {
