@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.unistack.org/micro/v3/errors"
@@ -343,6 +344,10 @@ func (h *Server) HTTPHandlerFunc(handler interface{}) (http.HandlerFunc, error) 
 }
 
 func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Increment gauge at the beginning of an HTTP request
+	atomic.AddInt64(&h.httpRequestsInflight, 1)
+	defer atomic.AddInt64(&h.httpRequestsInflight, -1)
+
 	ct := DefaultContentType
 	if htype := r.Header.Get(metadata.HeaderContentType); htype != "" {
 		ct = htype
@@ -449,7 +454,10 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if !slices.Contains(meter.DefaultSkipEndpoints, endpointName) {
-				h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName, "server", "http").Inc()
+				// Endpoint-specific inflight tracking
+				countPtr := h.getOrCreateEndpointCounter(endpointName)
+				atomic.AddInt64(countPtr, 1)
+				defer atomic.AddInt64(countPtr, -1)
 
 				defer func() {
 					n := GetRspCode(ctx)
@@ -461,7 +469,6 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					te := time.Since(ts)
 					h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", endpointName, "server", "http").Update(te.Seconds())
 					h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", endpointName, "server", "http").Update(te.Seconds())
-					h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", endpointName, "server", "http").Dec()
 				}()
 			}
 
@@ -513,17 +520,21 @@ func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, sp = h.opts.Tracer.Start(ctx, "rpc-server", topts...)
 
 	if !slices.Contains(meter.DefaultSkipEndpoints, handler.name) {
+		// Endpoint-specific inflight tracking
+		countPtr := h.getOrCreateEndpointCounter(endpointName)
+		atomic.AddInt64(countPtr, 1)
+		defer atomic.AddInt64(countPtr, -1)
+
 		defer func() {
 			te := time.Since(ts)
 			h.opts.Meter.Summary(semconv.ServerRequestLatencyMicroseconds, "endpoint", handler.name, "server", "http").Update(te.Seconds())
 			h.opts.Meter.Histogram(semconv.ServerRequestDurationSeconds, "endpoint", handler.name, "server", "http").Update(te.Seconds())
-			h.opts.Meter.Counter(semconv.ServerRequestInflight, "endpoint", handler.name, "server", "http").Dec()
 
 			n := GetRspCode(ctx)
 			if n > 399 {
-				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "server", "http", "status", "failure", "code", strconv.Itoa(n)).Inc()
+				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "server", "http", "status", "failure", "code", strconv.Itoa(n)).Inc()
 			} else {
-				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", handler.name, "server", "http", "status", "success", "code", strconv.Itoa(n)).Inc()
+				h.opts.Meter.Counter(semconv.ServerRequestTotal, "endpoint", endpointName, "server", "http", "status", "success", "code", strconv.Itoa(n)).Inc()
 			}
 		}()
 	}

@@ -40,8 +40,37 @@ type Server struct {
 	stateHealth  *atomic.Uint32
 	registerRPC  bool
 	sync.RWMutex
-	registered bool
-	init       bool
+	registered           bool
+	init                 bool
+	httpRequestsInflight int64
+	endpointInflight     map[string]*int64
+	endpointMu           sync.RWMutex
+}
+
+func (h *Server) getOrCreateEndpointCounter(endpoint string) *int64 {
+	h.endpointMu.RLock()
+	if countPtr, exists := h.endpointInflight[endpoint]; exists {
+		h.endpointMu.RUnlock()
+		return countPtr
+	}
+	h.endpointMu.RUnlock()
+
+	h.endpointMu.Lock()
+	defer h.endpointMu.Unlock()
+
+	// Double check after acquiring lock
+	if countPtr, exists := h.endpointInflight[endpoint]; exists {
+		return countPtr
+	}
+
+	countPtr := new(int64)
+	h.endpointInflight[endpoint] = countPtr
+	return countPtr
+}
+
+// getHTTPRequestsInflightCount returns the current number of active HTTP requests
+func (h *Server) getHTTPRequestsInflightCount() float64 {
+	return float64(atomic.LoadInt64(&h.httpRequestsInflight))
 }
 
 func (h *Server) newCodec(ct string) (codec.Codec, error) {
@@ -695,14 +724,21 @@ func NewServer(opts ...server.Option) *Server {
 	if v, ok := options.Context.Value(errorHandlerKey{}).(errorHandler); ok && v != nil {
 		eh = v
 	}
-	return &Server{
-		stateLive:    &atomic.Uint32{},
-		stateReady:   &atomic.Uint32{},
-		stateHealth:  &atomic.Uint32{},
-		opts:         options,
-		exit:         make(chan chan error),
-		subscribers:  make(map[*httpSubscriber][]broker.Subscriber),
-		errorHandler: eh,
-		pathHandlers: rhttp.NewTrie(),
+
+	s := &Server{
+		stateLive:        &atomic.Uint32{},
+		stateReady:       &atomic.Uint32{},
+		stateHealth:      &atomic.Uint32{},
+		opts:             options,
+		exit:             make(chan chan error),
+		subscribers:      make(map[*httpSubscriber][]broker.Subscriber),
+		errorHandler:     eh,
+		pathHandlers:     rhttp.NewTrie(),
+		endpointInflight: make(map[string]*int64),
 	}
+
+	// Registering the gauge metric when creating the server
+	s.opts.Meter.Gauge("micro_server_request_inflight", s.getHTTPRequestsInflightCount)
+
+	return s
 }
