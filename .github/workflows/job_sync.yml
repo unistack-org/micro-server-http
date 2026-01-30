@@ -11,84 +11,84 @@ jobs:
     if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     steps:
-    - name: init
-      run: |
-        git config --global user.email "vtolstov <vtolstov@users.noreply.github.com>"
-        git config --global user.name "github-actions[bot]"
-        echo "machine git.unistack.org login vtolstov password ${{ secrets.TOKEN_GITEA }}" >> /root/.netrc
-        echo "machine github.com login vtolstov password ${{ secrets.TOKEN_GITHUB }}" >> /root/.netrc
+      - name: init
+        run: |
+          git config --global user.email "vtolstov <vtolstov@users.noreply.github.com>"
+          git config --global user.name "github-actions[bot]"
+          echo "machine git.unistack.org login vtolstov password ${{ secrets.TOKEN_GITEA }}" >> /root/.netrc
+          echo "machine github.com login vtolstov password ${{ secrets.TOKEN_GITHUB }}" >> /root/.netrc
 
-    - name: check master
-      id: check_master
-      run: |
-        src_hash=$(git ls-remote https://github.com/${GITHUB_REPOSITORY} refs/heads/master | cut -f1)
-        dst_hash=$(git ls-remote ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} refs/heads/master | cut -f1)
-        echo "src_hash=$src_hash"
-        echo "dst_hash=$dst_hash"
-        if [ "$src_hash" != "$dst_hash" ]; then
-          echo "sync_needed=true" >> $GITHUB_OUTPUT
-        else
-          echo "sync_needed=false" >> $GITHUB_OUTPUT
-        fi
+      - name: check master
+        id: check_master
+        run: |
+          src_hash=$(git ls-remote https://github.com/${GITHUB_REPOSITORY} refs/heads/master | cut -f1)
+          dst_hash=$(git ls-remote ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} refs/heads/master | cut -f1)
+          echo "src_hash=$src_hash"
+          echo "dst_hash=$dst_hash"
+          if [ "$src_hash" != "$dst_hash" -a "$src_hash" != "" -a "$dst_hash" != "" ]; then
+            echo "sync_needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "sync_needed=false" >> $GITHUB_OUTPUT
+          fi
 
-    - name: sync master
-      if: steps.check_master.outputs.sync_needed == 'true'
-      run: |
-        git clone --filter=blob:none --filter=tree:0 --branch master --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
-        cd repo
-        git remote add --no-tags --fetch --track master upstream https://github.com/${GITHUB_REPOSITORY}
-        git pull --rebase upstream master
-        git push upstream master --progress
-        git push origin master --progress
-        cd ../
-        rm -rf repo
+      - name: sync master
+        if: steps.check_master.outputs.sync_needed == 'true'
+        run: |
+          git clone --filter=blob:none --filter=tree:0 --branch master --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
+          cd repo
+          git remote add --no-tags --fetch --track master upstream https://github.com/${GITHUB_REPOSITORY}
+          git pull --rebase upstream master
+          git push upstream master --progress
+          git push origin master --progress
+          cd ../
+          rm -rf repo
 
-    - name: check v3
-      id: check_v3
-      run: |
-        src_hash=$(git ls-remote https://github.com/${GITHUB_REPOSITORY} refs/heads/v3 | cut -f1)
-        dst_hash=$(git ls-remote ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} refs/heads/v3 | cut -f1)
-        echo "src_hash=$src_hash"
-        echo "dst_hash=$dst_hash"
-        if [ "$src_hash" != "$dst_hash" ]; then
-          echo "sync_needed=true" >> $GITHUB_OUTPUT
-        else
-          echo "sync_needed=false" >> $GITHUB_OUTPUT
-        fi
+      - name: check v3
+        id: check_v3
+        run: |
+          src_hash=$(git ls-remote https://github.com/${GITHUB_REPOSITORY} refs/heads/v3 | cut -f1)
+          dst_hash=$(git ls-remote ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} refs/heads/v3 | cut -f1)
+          echo "src_hash=$src_hash"
+          echo "dst_hash=$dst_hash"
+          if [ "$src_hash" != "$dst_hash" ]; then
+            echo "sync_needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "sync_needed=false" >> $GITHUB_OUTPUT
+          fi
 
-    - name: sync v3
-      if: steps.check_v3.outputs.sync_needed == 'true'
-      run: |
-        git clone --filter=blob:none --filter=tree:0 --branch v3 --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
-        cd repo
-        git remote add --no-tags --fetch --track v3 upstream https://github.com/${GITHUB_REPOSITORY}
-        git pull --rebase upstream v3
-        git push upstream v3 --progress
-        git push origin v3 --progress
-        cd ../
-        rm -rf repo
+      - name: sync v3
+        if: steps.check_v3.outputs.sync_needed == 'true'
+        run: |
+          git clone --filter=blob:none --filter=tree:0 --branch v3 --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
+          cd repo
+          git remote add --no-tags --fetch --track v3 upstream https://github.com/${GITHUB_REPOSITORY}
+          git pull --rebase upstream v3
+          git push upstream v3 --progress
+          git push origin v3 --progress
+          cd ../
+          rm -rf repo
 
-    - name: check v4
-      id: check_v4
-      run: |
-        src_hash=$(git ls-remote https://github.com/${GITHUB_REPOSITORY} refs/heads/v4 | cut -f1)
-        dst_hash=$(git ls-remote ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} refs/heads/v4 | cut -f1)
-        echo "src_hash=$src_hash"
-        echo "dst_hash=$dst_hash"
-        if [ "$src_hash" != "$dst_hash" ]; then
-          echo "sync_needed=true" >> $GITHUB_OUTPUT
-        else
-          echo "sync_needed=false" >> $GITHUB_OUTPUT
-        fi
+      - name: check v4
+        id: check_v4
+        run: |
+          src_hash=$(git ls-remote https://github.com/${GITHUB_REPOSITORY} refs/heads/v4 | cut -f1)
+          dst_hash=$(git ls-remote ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} refs/heads/v4 | cut -f1)
+          echo "src_hash=$src_hash"
+          echo "dst_hash=$dst_hash"
+          if [ "$src_hash" != "$dst_hash" ]; then
+            echo "sync_needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "sync_needed=false" >> $GITHUB_OUTPUT
+          fi
 
-    - name: sync v4
-      if: steps.check_v4.outputs.sync_needed == 'true'
-      run: |
-        git clone --filter=blob:none --filter=tree:0 --branch v4 --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
-        cd repo
-        git remote add --no-tags --fetch --track v4 upstream https://github.com/${GITHUB_REPOSITORY}
-        git pull --rebase upstream v4
-        git push upstream v4 --progress
-        git push origin v4 --progress
-        cd ../
-        rm -rf repo
+      - name: sync v4
+        if: steps.check_v4.outputs.sync_needed == 'true'
+        run: |
+          git clone --filter=blob:none --filter=tree:0 --branch v4 --single-branch ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY} repo
+          cd repo
+          git remote add --no-tags --fetch --track v4 upstream https://github.com/${GITHUB_REPOSITORY}
+          git pull --rebase upstream v4
+          git push upstream v4 --progress
+          git push origin v4 --progress
+          cd ../
+          rm -rf repo
