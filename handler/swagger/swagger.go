@@ -37,7 +37,7 @@ var Handler = func(dst map[string]interface{}, fsys fs.FS) http.HandlerFunc {
 
 		var src interface{}
 
-		if err = c.Unmarshal(buf, src); err != nil {
+		if err = c.Unmarshal(buf, &src); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(err.Error()))
 			return
