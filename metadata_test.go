@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.unistack.org/micro/v4/metadata"
+	"go.unistack.org/micro/v5/metadata"
 )
 
 func TestAppendResponseMetadata(t *testing.T) {

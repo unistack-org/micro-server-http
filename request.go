@@ -1,9 +1,9 @@
 package http
 
 import (
-	"go.unistack.org/micro/v4/codec"
-	"go.unistack.org/micro/v4/metadata"
-	"go.unistack.org/micro/v4/server"
+	"go.unistack.org/micro/v5/codec"
+	"go.unistack.org/micro/v5/metadata"
+	"go.unistack.org/micro/v5/server"
 )
 
 var _ server.Request = &rpcRequest{}

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"sync"
 
-	codecpb "go.unistack.org/micro-proto/v4/codec"
-	httpsrv "go.unistack.org/micro-server-http/v4"
-	"go.unistack.org/micro/v4/logger"
-	"go.unistack.org/micro/v4/metadata"
-	"go.unistack.org/micro/v4/meter"
+	codecpb "go.unistack.org/micro-proto/v5/codec"
+	httpsrv "go.unistack.org/micro-server-http/v5"
+	"go.unistack.org/micro/v5/logger"
+	"go.unistack.org/micro/v5/metadata"
+	"go.unistack.org/micro/v5/meter"
 )
 
 const (

@@ -11,16 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"go.unistack.org/micro/v4/errors"
-	"go.unistack.org/micro/v4/logger"
-	"go.unistack.org/micro/v4/metadata"
-	"go.unistack.org/micro/v4/meter"
-	"go.unistack.org/micro/v4/options"
-	"go.unistack.org/micro/v4/semconv"
-	"go.unistack.org/micro/v4/server"
-	"go.unistack.org/micro/v4/tracer"
-	rhttp "go.unistack.org/micro/v4/util/http"
-	rflutil "go.unistack.org/micro/v4/util/reflect"
+	"go.unistack.org/micro/v5/errors"
+	"go.unistack.org/micro/v5/logger"
+	"go.unistack.org/micro/v5/metadata"
+	"go.unistack.org/micro/v5/meter"
+	"go.unistack.org/micro/v5/options"
+	"go.unistack.org/micro/v5/semconv"
+	"go.unistack.org/micro/v5/server"
+	"go.unistack.org/micro/v5/tracer"
+	rhttp "go.unistack.org/micro/v5/util/http"
+	rflutil "go.unistack.org/micro/v5/util/reflect"
 )
 
 var (

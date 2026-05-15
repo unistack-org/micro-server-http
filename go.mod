@@ -1,13 +1,13 @@
-module go.unistack.org/micro-server-http/v4
+module go.unistack.org/micro-server-http/v5
 
 go 1.24.0
 
 require (
 	github.com/stretchr/testify v1.10.0
-	go.unistack.org/micro-client-http/v4 v4.1.0
-	go.unistack.org/micro-codec-yaml/v4 v4.1.0
-	go.unistack.org/micro-proto/v4 v4.1.0
-	go.unistack.org/micro/v4 v4.1.8
+	go.unistack.org/micro-client-http/v5 v4.1.0
+	go.unistack.org/micro-codec-yaml/v5 v4.1.0
+	go.unistack.org/micro-proto/v5 v4.1.0
+	go.unistack.org/micro/v5 v4.1.8
 	golang.org/x/net v0.48.0
 )
 

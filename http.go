@@ -14,11 +14,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.unistack.org/micro/v4/codec"
-	"go.unistack.org/micro/v4/logger"
-	"go.unistack.org/micro/v4/register"
-	"go.unistack.org/micro/v4/server"
-	rhttp "go.unistack.org/micro/v4/util/http"
+	"go.unistack.org/micro/v5/codec"
+	"go.unistack.org/micro/v5/logger"
+	"go.unistack.org/micro/v5/register"
+	"go.unistack.org/micro/v5/server"
+	rhttp "go.unistack.org/micro/v5/util/http"
 	"golang.org/x/net/netutil"
 )
 

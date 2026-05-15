@@ -8,8 +8,8 @@ package meter_handler
 
 import (
 	context "context"
-	codec "go.unistack.org/micro-proto/v4/codec"
-	client "go.unistack.org/micro/v4/client"
+	codec "go.unistack.org/micro-proto/v5/codec"
+	client "go.unistack.org/micro/v5/client"
 )
 
 var (

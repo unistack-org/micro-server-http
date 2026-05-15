@@ -7,7 +7,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"go.unistack.org/micro/v4/server"
+	"go.unistack.org/micro/v5/server"
 )
 
 var typeOfError = reflect.TypeOf((*error)(nil)).Elem()
