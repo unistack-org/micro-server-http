@@ -28,8 +28,8 @@ go.unistack.org/micro-client-http/v5 v5.0.1 h1:9gJV0Gi3IRPchvippC72ylbEekNQQTBkG
 go.unistack.org/micro-client-http/v5 v5.0.1/go.mod h1:n9dEPWvNHhtEv58wzTYIThLxouQ4eFz0+hu/XAxDGB8=
 go.unistack.org/micro-codec-json/v5 v5.0.1 h1:8OmUJ9T9c9mhaqpDcDTWO7wbg4e/XjNTbrPe7MnouRE=
 go.unistack.org/micro-codec-json/v5 v5.0.1/go.mod h1:/xB/HtoReZhI/n0D6jPD9gcyiMxlZpneGHKzzWrgNXk=
-go.unistack.org/micro-codec-yaml/v5 v5.0.1 h1:JjJB0FOazC3bMHY2QDKnHRd/b9KA2c9ZeM/xnpUmU58=
-go.unistack.org/micro-codec-yaml/v5 v5.0.1/go.mod h1:Lb3bZ9+/lmlBdWwdIH5xoADu17iFyrZP5dDnFjnEM14=
+go.unistack.org/micro-codec-yaml/v5 v5.0.2 h1:QggQGlkaROYHG39Fj0y1t56FhmQswYgXLTLeqbHIdQk=
+go.unistack.org/micro-codec-yaml/v5 v5.0.2/go.mod h1:Lb3bZ9+/lmlBdWwdIH5xoADu17iFyrZP5dDnFjnEM14=
 go.unistack.org/micro-proto/v5 v5.0.0 h1:Yevk99TesH2yRyP1SDjBG168O0ClbF8wVwf6wg6BTsY=
 go.unistack.org/micro-proto/v5 v5.0.0/go.mod h1:ahv2Utfobns8qFFQJ6ES8hfRwejXQ/B0twX56wkoEno=
 go.unistack.org/micro/v5 v5.0.1 h1:UUWrm86qEGfRupsOVuHDEWeSX7ZWlraWGfcFCDBTDjY=
