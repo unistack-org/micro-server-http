@@ -24,6 +24,6 @@ jobs:
     - name: setup deps
       run: go get -v ./...
     - name: run lint
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v9
       with:
         version: 'latest'
