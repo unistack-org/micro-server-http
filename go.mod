@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/stretchr/testify v1.12.1
-	go.unistack.org/micro-client-http/v5 v5.0.1
+	go.unistack.org/micro-client-http/v5 v5.0.2
 	go.unistack.org/micro-codec-yaml/v5 v5.0.2
 	go.unistack.org/micro-proto/v5 v5.0.0
 	go.unistack.org/micro/v5 v5.0.4
