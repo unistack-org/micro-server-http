@@ -32,8 +32,8 @@ go.unistack.org/micro-codec-yaml/v5 v5.0.2 h1:QggQGlkaROYHG39Fj0y1t56FhmQswYgXLT
 go.unistack.org/micro-codec-yaml/v5 v5.0.2/go.mod h1:Lb3bZ9+/lmlBdWwdIH5xoADu17iFyrZP5dDnFjnEM14=
 go.unistack.org/micro-proto/v5 v5.0.0 h1:Yevk99TesH2yRyP1SDjBG168O0ClbF8wVwf6wg6BTsY=
 go.unistack.org/micro-proto/v5 v5.0.0/go.mod h1:ahv2Utfobns8qFFQJ6ES8hfRwejXQ/B0twX56wkoEno=
-go.unistack.org/micro/v5 v5.0.1 h1:UUWrm86qEGfRupsOVuHDEWeSX7ZWlraWGfcFCDBTDjY=
-go.unistack.org/micro/v5 v5.0.1/go.mod h1:IpgRmisRvLRTU5j7bvWP66Wb0indaCZRAXzgxVAcwHo=
+go.unistack.org/micro/v5 v5.0.4 h1:ZX9W7ssAfIB4D/VPKAwwh8g1wxTjXb6MvPi1fEAGb7I=
+go.unistack.org/micro/v5 v5.0.4/go.mod h1:mTxr4Ha+toMNGovbz8NCwAfV539+2wtgwFmvXwxa1sY=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/net v0.58.0 h1:ynWG7rqYi4ccpTEuPZ2QGWHktVEM9DMCj9yzDE0Q7To=
